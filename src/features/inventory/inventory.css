@@ -1,0 +1,122 @@
+.inv-overall {
+  background: var(--surface-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 16px 0 8px;
+}
+.inv-overall-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+  font-size: 15px;
+}
+.inv-bar {
+  height: 12px;
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.inv-bar.sm {
+  height: 7px;
+  margin: 6px 0 10px;
+}
+.inv-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+  border-radius: 20px;
+  transition: width 0.4s ease;
+}
+.inv-legend {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--text-2);
+  flex-wrap: wrap;
+}
+.inv-legend .dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 5px;
+}
+.inv-legend .dot.glb {
+  background: var(--accent-green);
+}
+.inv-legend .dot.proc {
+  background: var(--accent-cyan);
+}
+.inv-legend .dot.todo {
+  background: var(--text-2);
+}
+
+.inv-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.inv-group-head h2 {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.inv-group-count {
+  color: var(--text-1);
+  font-size: 13px;
+}
+.inv-group-desc {
+  color: var(--text-2);
+  font-size: 12.5px;
+  margin: 6px 0;
+}
+
+.inv-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 4px 16px;
+}
+.inv-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.inv-item.done {
+  background: color-mix(in srgb, var(--accent-green) 6%, transparent);
+}
+.inv-item .ic-done {
+  color: var(--accent-green);
+  flex-shrink: 0;
+}
+.inv-item .ic-todo {
+  color: var(--text-2);
+  flex-shrink: 0;
+}
+.inv-item.todo .inv-name {
+  color: var(--text-1);
+}
+.inv-name {
+  flex: 1;
+}
+.inv-note {
+  font-size: 11px;
+  color: var(--text-2);
+}
+.inv-footer {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-2);
+}
