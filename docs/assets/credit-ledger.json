@@ -5,10 +5,27 @@
   "proceduralNote": "Rev5: fusivel e interruptor passaram a ser PROCEDURAIS (fuse.glb e switch.glb nao sao mais usados) para controlar pernas/terminais e alavanca. Creditos ja gastos nesses GLBs ficam como custo afundado; sem novo gasto nesta revisao.",
   "initialBalance": 1300,
   "budget": null,
-  "spent": 1050,
-  "estimatedBalanceAfter": 580,
-  "measuredBalance": { "beforeAula4": 1120, "afterAula4": 580, "note": "Saldo lido pela API (autoritativo). Antes da Aula 4 o ledger estimava 790; a diferenca vinha de tarefas nao registradas. Aula 4 gastou exatamente 540 (18 x 20 preview + 18 x 10 refine)." },
-  "breakdown": { "meshy5_base": 60, "meshy6_sensores": 120, "refine_textura": 120, "meshy6_lesson_preview": 80, "refine_lesson": 40, "meshy6_lesson2_preview": 40, "refine_lesson2": 20, "meshy6_toggle_switch": 30, "aula4_preview": 360, "aula4_refine": 180 },
+  "spent": 1350,
+  "estimatedBalanceAfter": 280,
+  "measuredBalance": { "beforeAula4": 1120, "afterAula4": 580, "afterInjectorCutaway": 550, "afterMotronicGap": 280, "note": "Saldo lido pela API (autoritativo). Antes da Aula 4 o ledger estimava 790; a diferenca vinha de tarefas nao registradas. Aula 4 gastou exatamente 540 (18 x 20 preview + 18 x 10 refine). Depois foi gerado o injector-cutaway (20 + 10 = 30) e as 9 pecas que faltavam no diagrama Motronic (9 x 30 = 270). O preview do CMP que falhou por timeout NAO foi cobrado: 550 - 270 = 280 exato." },
+  "breakdown": { "meshy5_base": 60, "meshy6_sensores": 120, "refine_textura": 120, "meshy6_lesson_preview": 80, "refine_lesson": 40, "meshy6_lesson2_preview": 40, "refine_lesson2": 20, "meshy6_toggle_switch": 30, "aula4_preview": 360, "aula4_refine": 180, "injector_cutaway": 30, "motronic_gap_preview": 180, "motronic_gap_refine": 90 },
+  "motronicGap": [
+    { "part": "cmp-sensor", "taskId": "01a062b3-3a16-714f-8ffa-2cef1adff7c8", "refineTaskId": "01a062b5-32b0-7432-bab3-f3941d53da10", "credits": 30, "note": "O preview 01a062ac-1601-7466-945e-9326ffe29a12 falhou por timeout e nao foi cobrado; refeito com prompt mais curto." },
+    { "part": "catalytic-converter", "taskId": "01a062ac-2a9b-71b4-9c71-e909f03aa110", "refineTaskId": "01a062b3-0d9b-778b-a714-d880ca6124d8", "credits": 30 },
+    { "part": "canister", "taskId": "01a062ac-3d53-75a8-a675-358f8dd85e5a", "refineTaskId": "01a062b3-1c6b-7189-92d6-17de9890fcd6", "credits": 30 },
+    { "part": "purge-valve", "taskId": "01a062ac-52ea-7096-ab2e-be3830083ba9", "refineTaskId": "01a062b3-29b9-706d-a449-0ba721645f81", "credits": 30 },
+    { "part": "hp-fuel-pump", "taskId": "01a062ac-901f-7311-a8b0-4a61c0010ac1", "refineTaskId": "01a062b4-fbdf-7412-afda-c863531542d9", "credits": 30 },
+    { "part": "egr-valve", "taskId": "01a062ac-a5b6-75ca-8fe6-0855aa2ec49a", "refineTaskId": "01a062b5-0aad-7148-8f0f-41c13562012e", "credits": 30 },
+    { "part": "nox-catalyst", "taskId": "01a062ac-ba9b-70a3-9317-8eace743eb08", "refineTaskId": "01a062b5-1967-77e0-8532-cd5a43b12200", "credits": 30 },
+    { "part": "egt-sensor", "taskId": "01a062ac-cd7c-728d-9423-2da105129bcf", "refineTaskId": "01a062b7-288a-746f-912b-beb3eaed5ce0", "credits": 30 },
+    { "part": "obd-connector", "taskId": "01a062ac-e37e-769c-af26-50b8a9f6e73a", "refineTaskId": "01a062b7-3760-7702-b477-8bb2d80fc78d", "credits": 30 },
+    { "part": "can-bus", "credits": 0, "note": "Procedural: barramento, nao peca." },
+    { "part": "mil-lamp", "credits": 0, "note": "Procedural: luz de painel." },
+    { "part": "immobilizer-antenna", "credits": 0, "note": "Procedural: funcao, nao componente avulso." }
+  ],
+  "injectorCutaway": [
+    { "part": "injector-cutaway", "taskId": "01a06282-4190-7647-b351-ae3a2dd013ea", "refineTaskId": "01a06288-b8db-7769-bc14-da57fdffa47d", "credits": 30, "note": "Cobre os slides 61 (componentes internos), 62 (reparo) e 63 (limpeza) numa peca so — economia de 60cr em relacao a gerar tres pecas." }
+  ],
   "model": "meshy-5 (base) + meshy-6 (sensores) + refine (textura)",
   "creditsPerPart": 5,
   "upgradesMeshy6": [

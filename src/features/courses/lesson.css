@@ -167,6 +167,12 @@
 .lesson-scene {
   margin: 8px 0 18px;
 }
+/* Cena larga: sai da coluna de texto e usa a largura util da tela. */
+.lesson-scene-wide {
+  --scene-w: min(1560px, calc(100vw - 2 * clamp(16px, 5vw, 60px) - 18px));
+  margin-left: calc((100% - var(--scene-w)) / 2);
+  margin-right: calc((100% - var(--scene-w)) / 2);
+}
 .lesson-scene-canvas {
   border-radius: 12px;
   overflow: hidden;

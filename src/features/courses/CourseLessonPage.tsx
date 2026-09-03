@@ -118,7 +118,7 @@ function Block({ block }: { block: LessonBlock }) {
     case 'scene': {
       const Scene = LESSON_SCENES[block.sceneId];
       return (
-        <figure className="lesson-scene">
+        <figure className={block.wide ? 'lesson-scene lesson-scene-wide' : 'lesson-scene'}>
           <div className="lesson-scene-canvas" style={{ height: block.heightPx ?? 320 }}>
             {Scene ? (
               <LazyScene>

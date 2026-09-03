@@ -1,5 +1,8 @@
 /* eslint-disable react-refresh/only-export-components */
-import type { JSX } from 'react';
+import { useRef, type JSX } from 'react';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
+import { throttleOpening } from '@/features/courses/lessons/scenes/mapPrimitives';
 import {
   Camshaft,
   ConnRod,
@@ -27,6 +30,8 @@ const BRASS = { color: '#b8912f', metalness: 0.8, roughness: 0.4 } as const;
 const COPPER = { color: '#b5732e', metalness: 0.85, roughness: 0.4 } as const;
 const CERAMIC = { color: '#e8e2d0', metalness: 0.05, roughness: 0.8 } as const;
 const RUBBER = { color: '#1a1c22', metalness: 0.1, roughness: 0.9 } as const;
+/** Corpo tubular vazado: fica meio transparente para dar para ver o que passa dentro. */
+const CUTAWAY = { transparent: true, opacity: 0.42, depthWrite: false } as const;
 
 /** Injetor de combustivel. */
 function Injector(): JSX.Element {
@@ -91,30 +96,77 @@ function IgnitionCoil(): JSX.Element {
   );
 }
 
-/** Corpo de borboleta eletronico. */
+/** Corpo de borboleta eletronico: a borboleta abre e fecha de verdade. */
 function ThrottleBody(): JSX.Element {
+  const plate = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    const g = plate.current;
+    if (!g) return;
+    // 0,12 rad e a fresta da marcha lenta; 1,45 rad e quase paralela ao fluxo.
+    g.rotation.z = 0.12 + 1.33 * throttleOpening(state.clock.elapsedTime);
+  });
+
   return (
     <group>
-      {/* Tubo */}
+      {/* Furo por onde o ar passa */}
       <mesh rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.75, 0.75, 1.6, 28, 1, true]} />
-        <meshStandardMaterial {...METAL} side={2} />
+        <cylinderGeometry args={[0.7, 0.7, 1.7, 32, 1, true]} />
+        <meshStandardMaterial {...METAL} {...CUTAWAY} side={2} />
       </mesh>
-      {/* Borboleta (disco) */}
-      <mesh rotation={[0.5, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.7, 0.7, 0.06, 24]} />
+      {/* Flange de cada boca, com os furos de parafuso */}
+      {[-0.85, 0.85].map((x) => (
+        <group key={x} position={[x, 0, 0]}>
+          <mesh rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.98, 0.98, 0.14, 32]} />
+            <meshStandardMaterial {...METAL_DARK} />
+          </mesh>
+          {[
+            [0.72, 0.72],
+            [-0.72, 0.72],
+            [0.72, -0.72],
+            [-0.72, -0.72],
+          ].map(([y, z]) => (
+            <mesh key={`${y},${z}`} position={[0, y, z]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.13, 0.13, 0.2, 12]} />
+              <meshStandardMaterial {...METAL_DARK} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+      {/* Eixo da borboleta, atravessando o furo */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 1.9, 12]} />
         <meshStandardMaterial {...METAL_DARK} />
       </mesh>
-      {/* Motor eletrico lateral */}
-      <mesh position={[0, -0.55, 0.75]}>
-        <cylinderGeometry args={[0.28, 0.28, 0.5, 16]} />
+      {/* Paleta: um pouco menor que o furo, senao nao fecharia */}
+      <group ref={plate}>
+        <mesh rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.66, 0.66, 0.045, 28]} />
+          <meshStandardMaterial {...METAL_DARK} />
+        </mesh>
+      </group>
+      {/* Motor eletrico, deitado ao lado do furo */}
+      <mesh position={[0.1, -0.35, 0.95]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.3, 0.3, 1.15, 18]} />
         <meshStandardMaterial {...PLASTIC} />
       </mesh>
-      {/* Conector */}
-      <mesh position={[0.9, 0.35, 0]}>
-        <boxGeometry args={[0.4, 0.5, 0.5]} />
+      {/* Tampa das engrenagens, na ponta do eixo */}
+      <mesh position={[0, 0, 1.0]}>
+        <cylinderGeometry args={[0.42, 0.42, 0.2, 22]} />
         <meshStandardMaterial {...PLASTIC_GREY} />
       </mesh>
+      {/* Conector, embaixo */}
+      <mesh position={[0.35, -0.95, 0.5]}>
+        <boxGeometry args={[0.52, 0.3, 0.44]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <mesh key={i} position={[0.2 + (i % 3) * 0.15, -1.14, 0.42 + Math.floor(i / 3) * 0.16]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.18, 6]} />
+          <meshStandardMaterial {...BRASS} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -167,9 +219,9 @@ function TempSensor(): JSX.Element {
   );
 }
 
-/** Sonda lambda: hex + ceramica + 4 fios. */
+/** Sonda lambda banda estreita de 4 fios: 2 do aquecedor, sinal e massa. */
 function LambdaSensor(): JSX.Element {
-  const wireColors = ['#d7d7d7', '#d7d7d7', '#111', '#3a7bd5'];
+  const wireColors = ['#e8e8e8', '#e8e8e8', '#111', '#8a8f98'];
   return (
     <group>
       <mesh position={[0, 0.35, 0]}>
@@ -214,11 +266,32 @@ function KnockSensor(): JSX.Element {
         <cylinderGeometry args={[0.2, 0.2, 0.7, 20, 1, true]} />
         <meshStandardMaterial {...METAL} side={2} />
       </mesh>
-      {/* Cabo */}
-      <mesh position={[0.7, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.06, 0.06, 0.7, 10]} />
+      {/* Saida do cabo, com o pescoco de borracha */}
+      <mesh position={[0.78, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.07, 0.12, 0.24, 12]} />
         <meshStandardMaterial {...RUBBER} />
       </mesh>
+      {/* Cabo blindado */}
+      <mesh position={[1.05, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.06, 0.06, 0.42, 10]} />
+        <meshStandardMaterial {...RUBBER} />
+      </mesh>
+      {/* Conector de 2 vias: e aqui que se mede a resistencia do cristal */}
+      <mesh position={[1.45, 0, 0]}>
+        <boxGeometry args={[0.44, 0.26, 0.34]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {/* Trava do conector */}
+      <mesh position={[1.45, 0, -0.2]}>
+        <boxGeometry args={[0.22, 0.1, 0.08]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {[0.075, -0.075].map((z) => (
+        <mesh key={z} position={[1.72, 0, z]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.028, 0.028, 0.22, 8]} />
+          <meshStandardMaterial {...COPPER} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -246,22 +319,6 @@ function CkpSensor(): JSX.Element {
         <boxGeometry args={[0.45, 0.45, 0.5]} />
         <meshStandardMaterial {...PLASTIC_GREY} />
       </mesh>
-      {/* Roda dentada de referencia */}
-      <group position={[0, -1.05, 0]}>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.8, 0.8, 0.16, 36]} />
-          <meshStandardMaterial {...METAL_DARK} />
-        </mesh>
-        {Array.from({ length: 20 }).map((_, i) => {
-          const a = (i / 20) * Math.PI * 2;
-          return (
-            <mesh key={i} position={[Math.cos(a) * 0.82, 0, Math.sin(a) * 0.82]}>
-              <boxGeometry args={[0.1, 0.18, 0.1]} />
-              <meshStandardMaterial {...METAL} />
-            </mesh>
-          );
-        })}
-      </group>
     </group>
   );
 }
@@ -301,20 +358,23 @@ function Ecu(): JSX.Element {
           <meshStandardMaterial {...METAL_DARK} />
         </mesh>
       ))}
-      {/* Conector multivias */}
-      <mesh position={[1.05, 0, 0]}>
-        <boxGeometry args={[0.25, 0.8, 1.1]} />
-        <meshStandardMaterial {...PLASTIC} />
-      </mesh>
-      {/* Pinos */}
-      {Array.from({ length: 5 }).map((_, r) =>
-        Array.from({ length: 8 }).map((_, c) => (
-          <mesh key={`${r}-${c}`} position={[1.2, 0.28 - r * 0.14, 0.45 - c * 0.13]}>
-            <cylinderGeometry args={[0.02, 0.02, 0.12, 6]} />
-            <meshStandardMaterial {...COPPER} />
+      {/* Conector multivias nos dois lados: o chicote pode chegar por qualquer um */}
+      {[1, -1].map((s) => (
+        <group key={s}>
+          <mesh position={[1.05 * s, 0, 0]}>
+            <boxGeometry args={[0.25, 0.8, 1.1]} />
+            <meshStandardMaterial {...PLASTIC} />
           </mesh>
-        )),
-      )}
+          {Array.from({ length: 5 }).map((_, r) =>
+            Array.from({ length: 8 }).map((_, c) => (
+              <mesh key={`${r}-${c}`} position={[1.2 * s, 0.28 - r * 0.14, 0.45 - c * 0.13]}>
+                <cylinderGeometry args={[0.02, 0.02, 0.12, 6]} />
+                <meshStandardMaterial {...COPPER} />
+              </mesh>
+            )),
+          )}
+        </group>
+      ))}
     </group>
   );
 }
@@ -436,15 +496,15 @@ const PAPER = { color: '#d9c489', metalness: 0.02, roughness: 0.95 } as const;
 const STEEL_DARK = { color: '#5d6472', metalness: 0.85, roughness: 0.45 } as const;
 
 /** Medidor de massa de ar: tubo de passagem com cartucho lateral. */
-function MafSensor(): JSX.Element {
+function MafSensor({ pins = 4 }: { pins?: number } = {}): JSX.Element {
   return (
     <group>
       <mesh rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.7, 0.7, 1.8, 28, 1, true]} />
-        <meshStandardMaterial {...PLASTIC} side={2} />
+        <meshStandardMaterial {...PLASTIC} {...CUTAWAY} side={2} />
       </mesh>
       {[-0.9, 0.9].map((x) => (
-        <mesh key={x} position={[x, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <mesh key={x} position={[x, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
           <torusGeometry args={[0.7, 0.09, 10, 28]} />
           <meshStandardMaterial {...PLASTIC_GREY} />
         </mesh>
@@ -463,9 +523,53 @@ function MafSensor(): JSX.Element {
         <boxGeometry args={[0.18, 0.7, 0.12]} />
         <meshStandardMaterial {...CERAMIC} />
       </mesh>
+      {/* Conector: 4 vias no MAF comum, 5 na versao com sensor de temperatura */}
       <mesh position={[0, 1.15, 0.1]}>
-        <boxGeometry args={[0.6, 0.4, 0.5]} />
+        <boxGeometry args={[0.68, 0.4, 0.5]} />
         <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      <mesh position={[0, 1.15, 0.38]}>
+        <boxGeometry args={[0.24, 0.12, 0.08]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {Array.from({ length: pins }).map((_, i) => (
+        <mesh key={i} position={[-0.24 + (i * 0.48) / (pins - 1), 1.46, 0.1]}>
+          <cylinderGeometry args={[0.032, 0.032, 0.24, 8]} />
+          <meshStandardMaterial {...BRASS} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/**
+ * TMAF: o mesmo medidor de massa de ar com o sensor de temperatura junto. A
+ * anteninha do NTC entra no duto e a conta muda de cor conforme o ar esquenta.
+ */
+function TmafSensor(): JSX.Element {
+  const bead = useRef<THREE.Mesh>(null);
+  const cold = useRef(new THREE.Color('#3b82f6')).current;
+  const hot = useRef(new THREE.Color('#f97316')).current;
+
+  useFrame((state) => {
+    const m = bead.current?.material as THREE.MeshStandardMaterial | undefined;
+    if (!m) return;
+    const k = (1 - Math.cos(state.clock.elapsedTime * 0.5)) / 2;
+    m.color.copy(cold).lerp(hot, k);
+    m.emissive.copy(m.color).multiplyScalar(0.45);
+  });
+
+  return (
+    <group>
+      <MafSensor pins={5} />
+      {/* Haste fina do NTC, entrando no duto */}
+      <mesh position={[0.34, 0.18, 0]}>
+        <cylinderGeometry args={[0.035, 0.035, 0.75, 8]} />
+        <meshStandardMaterial {...BRASS} />
+      </mesh>
+      <mesh ref={bead} position={[0.34, -0.22, 0]}>
+        <sphereGeometry args={[0.12, 16, 16]} />
+        <meshStandardMaterial color="#3b82f6" metalness={0.2} roughness={0.55} />
       </mesh>
     </group>
   );
@@ -1048,20 +1152,107 @@ function LambdaPlanar(): JSX.Element {
         <cylinderGeometry args={[0.2, 0.2, 0.5, 16, 1, true, 0, Math.PI]} />
         <meshStandardMaterial {...METAL} side={2} />
       </mesh>
-      {/* Elemento planar laminado */}
+      {/* Celula de bombeamento (lamina externa, lado do gas de escape) */}
+      <mesh position={[-0.07, -0.35, 0]}>
+        <boxGeometry args={[0.06, 1.3, 0.05]} />
+        <meshStandardMaterial color="#b9c6d6" metalness={0.15} roughness={0.6} />
+      </mesh>
+      {/* Camara de difusao: o vao entre as duas celulas */}
       <mesh position={[0, -0.35, 0]}>
-        <boxGeometry args={[0.16, 1.3, 0.05]} />
+        <boxGeometry args={[0.03, 1.15, 0.045]} />
+        <meshStandardMaterial color="#2e3b52" metalness={0} roughness={1} />
+      </mesh>
+      {/* Celula de Nernst (lamina de medicao, com ar de referencia) */}
+      <mesh position={[0.07, -0.35, 0]}>
+        <boxGeometry args={[0.06, 1.3, 0.05]} />
         <meshStandardMaterial {...CERAMIC} />
       </mesh>
-      {/* Trilha do aquecedor */}
-      <mesh position={[0, -0.35, 0.04]}>
-        <boxGeometry args={[0.07, 1.1, 0.02]} />
+      {/* Trilha do aquecedor, comandada por PWM */}
+      <mesh position={[0.14, -0.35, 0.04]}>
+        <boxGeometry args={[0.05, 1.1, 0.02]} />
         <meshStandardMaterial {...COPPER} />
       </mesh>
       {/* Saida dos fios */}
       <mesh position={[0, 0.75, -0.18]}>
         <cylinderGeometry args={[0.18, 0.26, 0.4, 16, 1, false, 0, Math.PI]} />
         <meshStandardMaterial {...METAL_DARK} side={2} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Injetor em corte longitudinal: mostra filtro, bobina, mola, agulha e disco de furos. */
+function InjectorCutaway(): JSX.Element {
+  return (
+    <group>
+      {/* Meia carcaca plastica (o corte) */}
+      <mesh position={[0, 0.1, -0.02]}>
+        <cylinderGeometry args={[0.42, 0.42, 1.5, 24, 1, true, 0, Math.PI]} />
+        <meshStandardMaterial {...PLASTIC} side={2} />
+      </mesh>
+      {/* Entrada de combustivel e anel de vedacao superior */}
+      <mesh position={[0, 1.02, 0]}>
+        <cylinderGeometry args={[0.26, 0.26, 0.35, 18]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[0, 1.05, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.27, 0.06, 10, 22]} />
+        <meshStandardMaterial {...RUBBER} />
+      </mesh>
+      {/* Microfiltro (cesta) */}
+      <mesh position={[0, 0.7, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 0.3, 16]} />
+        <meshStandardMaterial color="#cfd6e0" metalness={0.3} roughness={0.8} wireframe />
+      </mesh>
+      {/* Enrolamento de cobre da bobina */}
+      <mesh position={[0, 0.2, 0]}>
+        <cylinderGeometry args={[0.33, 0.33, 0.6, 20, 1, true]} />
+        <meshStandardMaterial {...COPPER} side={2} />
+      </mesh>
+      {/* Mola interna */}
+      {[-0.12, -0.02, 0.08].map((y) => (
+        <mesh key={y} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.11, 0.022, 8, 20]} />
+          <meshStandardMaterial {...METAL} />
+        </mesh>
+      ))}
+      {/* Agulha de acionamento */}
+      <mesh position={[0, -0.25, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 1.1, 12]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[0, -0.85, 0]}>
+        <coneGeometry args={[0.07, 0.16, 14]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Corpo inferior */}
+      <mesh position={[0, -0.55, -0.02]}>
+        <cylinderGeometry args={[0.22, 0.22, 0.8, 18, 1, true, 0, Math.PI]} />
+        <meshStandardMaterial {...METAL_DARK} side={2} />
+      </mesh>
+      {/* Anel de vedacao inferior */}
+      <mesh position={[0, -0.78, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.23, 0.06, 10, 22]} />
+        <meshStandardMaterial {...RUBBER} />
+      </mesh>
+      {/* Disco com furos calibrados */}
+      <mesh position={[0, -1.0, 0]}>
+        <cylinderGeometry args={[0.2, 0.2, 0.07, 20]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      {[0, 1, 2, 3].map((i) => {
+        const a = (i / 4) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(a) * 0.1, -1.05, Math.sin(a) * 0.1]}>
+            <cylinderGeometry args={[0.022, 0.022, 0.12, 8]} />
+            <meshStandardMaterial color="#11151f" metalness={0} roughness={1} />
+          </mesh>
+        );
+      })}
+      {/* Conector eletrico */}
+      <mesh position={[0.42, 0.35, 0]}>
+        <boxGeometry args={[0.36, 0.4, 0.42]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
       </mesh>
     </group>
   );
@@ -1098,6 +1289,483 @@ function TriggerWheel(): JSX.Element {
   );
 }
 
+/** Sensor de fase (CMP): efeito Hall lendo a roda dentada do comando. */
+function CmpSensor(): JSX.Element {
+  return (
+    <group>
+      <mesh position={[0, 0.15, 0]}>
+        <boxGeometry args={[0.5, 1.0, 0.35]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      {/* Flange de fixacao com o furo do parafuso */}
+      <mesh position={[0.55, 0.15, 0]}>
+        <boxGeometry args={[0.6, 0.32, 0.3]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      <mesh position={[0.72, 0.15, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.11, 0.11, 0.36, 16]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      {/* Cabeca sensora (a face que "olha" a roda do comando) */}
+      <mesh position={[0, -0.5, 0]}>
+        <boxGeometry args={[0.36, 0.35, 0.26]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      <mesh position={[0, -0.7, 0]}>
+        <boxGeometry args={[0.3, 0.06, 0.22]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Conector de 3 vias: alimentacao, massa e sinal */}
+      <mesh position={[0, 0.82, 0]}>
+        <boxGeometry args={[0.46, 0.36, 0.4]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {[-0.13, 0, 0.13].map((x) => (
+        <mesh key={x} position={[x, 1.05, 0]}>
+          <boxGeometry args={[0.05, 0.2, 0.05]} />
+          <meshStandardMaterial {...BRASS} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Corpo de catalisador: usado pelo catalisador de 3 vias e pelo de NOx. */
+function CatalystShell({
+  dims,
+  bosses,
+}: {
+  /** [raio, comprimento, numero de nervuras da manta termica] */
+  dims: [number, number, number];
+  bosses: number[];
+}): JSX.Element {
+  const [r, len, ribs] = dims;
+  return (
+    <group rotation={[0, 0, Math.PI / 2]}>
+      <mesh>
+        <cylinderGeometry args={[r, r, len, 24]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      {/* Nervuras da manta termica */}
+      {Array.from({ length: ribs }).map((_, i) => (
+        <mesh key={i} position={[0, (i / (ribs - 1) - 0.5) * len * 0.8, 0]}>
+          <cylinderGeometry args={[r + 0.03, r + 0.03, 0.05, 24]} />
+          <meshStandardMaterial {...METAL_DARK} />
+        </mesh>
+      ))}
+      {/* Cones e tubos de entrada e saida */}
+      {[1, -1].map((s) => (
+        <group key={s}>
+          <mesh position={[0, (s * (len + 0.4)) / 2, 0]} scale={[1, s, 1]}>
+            <coneGeometry args={[r, 0.4, 24, 1, true]} />
+            <meshStandardMaterial {...METAL} side={2} />
+          </mesh>
+          <mesh position={[0, s * (len / 2 + 0.65), 0]}>
+            <cylinderGeometry args={[0.2, 0.2, 0.6, 18]} />
+            <meshStandardMaterial {...METAL_DARK} />
+          </mesh>
+        </group>
+      ))}
+      {/* Bossas roscadas para as sondas */}
+      {bosses.map((y) => (
+        <mesh key={y} position={[0, y, r]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.12, 0.14, 0.22, 6]} />
+          <meshStandardMaterial {...METAL_DARK} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+/** Catalisador de tres vias (pre-catalisador): corpo oval com bossa de sonda. */
+function CatalyticConverter(): JSX.Element {
+  return <CatalystShell dims={[0.5, 1.6, 5]} bosses={[0.55]} />;
+}
+
+/** Catalisador acumulador de NOx: duas bossas, uma para a sonda de NOx. */
+function NoxCatalyst(): JSX.Element {
+  return <CatalystShell dims={[0.45, 1.9, 6]} bosses={[0.7, -0.7]} />;
+}
+
+/** Canister: caixa de carvao ativado que retem os vapores do tanque. */
+function Canister(): JSX.Element {
+  return (
+    <group>
+      <mesh>
+        <boxGeometry args={[1.5, 1.3, 0.9]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      {/* Carvao ativado a mostra por uma janela lateral */}
+      <mesh position={[0, 0, 0.46]}>
+        <boxGeometry args={[1.1, 0.9, 0.02]} />
+        <meshStandardMaterial color="#15171c" metalness={0} roughness={1} />
+      </mesh>
+      {/* Tres bocais: tanque, purga e ar */}
+      {[-0.45, 0, 0.45].map((x) => (
+        <mesh key={x} position={[x, 0.85, 0]}>
+          <cylinderGeometry args={[0.12, 0.14, 0.4, 14]} />
+          <meshStandardMaterial {...PLASTIC_GREY} />
+        </mesh>
+      ))}
+      {/* Suporte de fixacao */}
+      <mesh position={[-0.85, -0.2, 0]}>
+        <boxGeometry args={[0.22, 0.7, 0.6]} />
+        <meshStandardMaterial {...STEEL_DARK} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Valvula de purga do canister: solenoide que a ECU abre em PWM. */
+function PurgeValve(): JSX.Element {
+  return (
+    <group>
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.42, 0.42, 0.9, 20]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      {/* Bocais de mangueira nas duas pontas */}
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[s * 0.72, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.13, 0.16, 0.55, 14]} />
+          <meshStandardMaterial {...PLASTIC_GREY} />
+        </mesh>
+      ))}
+      {/* Conector de 2 vias */}
+      <mesh position={[0, 0.55, 0]}>
+        <boxGeometry args={[0.4, 0.35, 0.34]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {[-0.09, 0.09].map((x) => (
+        <mesh key={x} position={[x, 0.78, 0]}>
+          <boxGeometry args={[0.05, 0.18, 0.05]} />
+          <meshStandardMaterial {...BRASS} />
+        </mesh>
+      ))}
+      {/* Orelha de fixacao */}
+      <mesh position={[0, -0.05, -0.5]}>
+        <boxGeometry args={[0.5, 0.5, 0.08]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Bomba de alta pressao da injecao direta: acionada pelo comando. */
+function HpFuelPump(): JSX.Element {
+  return (
+    <group>
+      <mesh>
+        <cylinderGeometry args={[0.55, 0.55, 0.9, 20]} />
+        <meshStandardMaterial color="#9aa3af" metalness={0.7} roughness={0.5} />
+      </mesh>
+      {/* Amortecedor de pulsacao no topo */}
+      <mesh position={[0, 0.62, 0]}>
+        <cylinderGeometry args={[0.42, 0.5, 0.35, 20]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      {/* Tucho acionado pelo came, embaixo */}
+      <mesh position={[0, -0.62, 0]}>
+        <cylinderGeometry args={[0.3, 0.34, 0.42, 18]} />
+        <meshStandardMaterial {...STEEL_DARK} />
+      </mesh>
+      <mesh position={[0, -0.9, 0]}>
+        <cylinderGeometry args={[0.36, 0.36, 0.14, 18]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Valvula dosadora solenoide com conector */}
+      <mesh position={[-0.72, 0.05, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.26, 0.26, 0.55, 16]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      <mesh position={[-1.05, 0.05, 0]}>
+        <boxGeometry args={[0.28, 0.34, 0.32]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {/* Saida de alta pressao */}
+      <mesh position={[0.72, 0.1, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.12, 0.14, 0.55, 12]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[0.55, 0.1, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.2, 0.2, 0.2, 6]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Valvula EGR: devolve parte dos gases de escape para a admissao. */
+function EgrValve(): JSX.Element {
+  return (
+    <group>
+      {/* Corpo fundido com o flange */}
+      <mesh position={[0, -0.15, 0]}>
+        <boxGeometry args={[1.0, 0.6, 0.8]} />
+        <meshStandardMaterial color="#6b6f78" metalness={0.6} roughness={0.65} />
+      </mesh>
+      <mesh position={[0, -0.5, 0]}>
+        <boxGeometry args={[1.3, 0.16, 1.0]} />
+        <meshStandardMaterial {...STEEL_DARK} />
+      </mesh>
+      {[-0.5, 0.5].map((x) => (
+        <mesh key={x} position={[x, -0.5, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.1, 0.1, 0.2, 12]} />
+          <meshStandardMaterial {...METAL_DARK} />
+        </mesh>
+      ))}
+      {/* Passagem dos gases */}
+      <mesh position={[0, -0.15, 0.55]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.22, 0.22, 0.5, 16]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Sede e haste da valvula (pintle) */}
+      <mesh position={[0, -0.42, 0]}>
+        <coneGeometry args={[0.22, 0.22, 16]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[0, 0.15, 0]}>
+        <cylinderGeometry args={[0.07, 0.07, 0.9, 12]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      {/* Atuador eletrico com conector */}
+      <mesh position={[0, 0.65, 0]}>
+        <cylinderGeometry args={[0.45, 0.45, 0.6, 20]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      <mesh position={[0.45, 0.85, 0]}>
+        <boxGeometry args={[0.36, 0.32, 0.34]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Sensor de temperatura dos gases de escape (EGT): sonda longa e cabo blindado. */
+function EgtSensor(): JSX.Element {
+  return (
+    <group>
+      <mesh position={[0, 0.15, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 0.32, 6]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[0, -0.15, 0]}>
+        <cylinderGeometry args={[0.2, 0.2, 0.3, 16]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Haste longa que entra no fluxo dos gases */}
+      <mesh position={[0, -0.85, 0]}>
+        <cylinderGeometry args={[0.075, 0.075, 1.1, 14]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[0, -1.45, 0]}>
+        <sphereGeometry args={[0.085, 12, 10]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Cabo blindado trancado */}
+      {Array.from({ length: 7 }).map((_, i) => (
+        <mesh key={i} position={[0, 0.45 + i * 0.16, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.075, 0.032, 8, 16]} />
+          <meshStandardMaterial color="#8d949f" metalness={0.75} roughness={0.5} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.75, 0]}>
+        <boxGeometry args={[0.34, 0.3, 0.28]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Conector de diagnostico OBD2 de 16 vias. */
+function ObdConnector(): JSX.Element {
+  return (
+    <group>
+      {/* Carcaca trapezoidal */}
+      <mesh>
+        <boxGeometry args={[1.5, 0.7, 0.5]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      <mesh position={[0, -0.42, 0]}>
+        <boxGeometry args={[1.1, 0.16, 0.5]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      {/* Moldura metalica */}
+      <mesh position={[0, 0, 0.27]}>
+        <boxGeometry args={[1.56, 0.76, 0.06]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* 16 terminais em duas fileiras */}
+      {Array.from({ length: 16 }).map((_, i) => {
+        const row = i < 8 ? 1 : -1;
+        const col = i % 8;
+        return (
+          <mesh key={i} position={[(col - 3.5) * 0.16, row * 0.16, 0.2]}>
+            <boxGeometry args={[0.06, 0.11, 0.16]} />
+            <meshStandardMaterial {...BRASS} />
+          </mesh>
+        );
+      })}
+      {/* Chicote saindo por tras */}
+      <mesh position={[0, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.24, 0.24, 0.5, 16]} />
+        <meshStandardMaterial {...RUBBER} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Rede CAN: par trancado com os dois resistores de 120 ohm nas pontas. */
+function CanBus(): JSX.Element {
+  const turns = 26;
+  return (
+    <group>
+      {Array.from({ length: turns }).map((_, i) => {
+        const t = (i / (turns - 1) - 0.5) * 3.4;
+        const a = (i / (turns - 1)) * Math.PI * 6;
+        return (
+          <group key={i}>
+            <mesh position={[t, Math.sin(a) * 0.14, Math.cos(a) * 0.14]}>
+              <sphereGeometry args={[0.075, 10, 8]} />
+              <meshStandardMaterial color="#e0c341" metalness={0.1} roughness={0.85} />
+            </mesh>
+            <mesh position={[t, -Math.sin(a) * 0.14, -Math.cos(a) * 0.14]}>
+              <sphereGeometry args={[0.075, 10, 8]} />
+              <meshStandardMaterial color="#3d7a3d" metalness={0.1} roughness={0.85} />
+            </mesh>
+          </group>
+        );
+      })}
+      {/* Resistores de terminacao de 120 ohm, um em cada extremidade */}
+      {[-1.95, 1.95].map((x) => (
+        <group key={x}>
+          <mesh position={[x, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.16, 0.16, 0.42, 16]} />
+            <meshStandardMaterial {...PAPER} />
+          </mesh>
+          {[-0.26, 0.26].map((z) => (
+            <mesh key={z} position={[x, 0, z]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[0.045, 0.045, 0.2, 8]} />
+              <meshStandardMaterial {...METAL} />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Luz espia de anomalia (MIL) no painel: o "motorzinho" amarelo. */
+function MilLamp(): JSX.Element {
+  return (
+    <group>
+      {/* Recorte do painel */}
+      <mesh>
+        <boxGeometry args={[2.0, 1.2, 0.25]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      {/* Lente do simbolo, acesa */}
+      <mesh position={[0, 0, 0.15]}>
+        <boxGeometry args={[0.95, 0.62, 0.08]} />
+        <meshStandardMaterial
+          color="#e8a01e"
+          emissive="#ffa41b"
+          emissiveIntensity={1.4}
+          roughness={0.5}
+        />
+      </mesh>
+      <mesh position={[0, 0.34, 0.15]}>
+        <boxGeometry args={[0.5, 0.2, 0.08]} />
+        <meshStandardMaterial
+          color="#e8a01e"
+          emissive="#ffa41b"
+          emissiveIntensity={1.4}
+          roughness={0.5}
+        />
+      </mesh>
+      {/* Soquete e fios atras */}
+      <mesh position={[0, 0, -0.28]}>
+        <cylinderGeometry args={[0.22, 0.22, 0.35, 14]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Imobilizador: antena em volta do comutador e o transponder da chave. */
+function ImmobilizerAntenna(): JSX.Element {
+  return (
+    <group>
+      {/* Cilindro do comutador de ignicao */}
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.42, 0.42, 1.1, 20]} />
+        <meshStandardMaterial {...METAL_DARK} />
+      </mesh>
+      {/* Bobina de antena em volta */}
+      <mesh position={[0.15, 0, 0]} rotation={[0, Math.PI / 2, 0]}>
+        <torusGeometry args={[0.5, 0.11, 12, 28]} />
+        <meshStandardMaterial {...COPPER} />
+      </mesh>
+      <mesh position={[0.15, -0.55, 0]}>
+        <boxGeometry args={[0.3, 0.3, 0.28]} />
+        <meshStandardMaterial {...PLASTIC_GREY} />
+      </mesh>
+      {/* Palheta e cabeca da chave com o transponder */}
+      <mesh position={[-0.95, 0, 0]}>
+        <boxGeometry args={[0.9, 0.28, 0.05]} />
+        <meshStandardMaterial {...METAL} />
+      </mesh>
+      <mesh position={[-1.75, 0, 0]}>
+        <boxGeometry args={[0.75, 0.62, 0.22]} />
+        <meshStandardMaterial {...PLASTIC} />
+      </mesh>
+      {/* O chip transponder dentro da cabeca da chave */}
+      <mesh position={[-1.75, 0, 0.13]}>
+        <cylinderGeometry args={[0.13, 0.13, 0.05, 14]} />
+        <meshStandardMaterial color="#2f6f4f" metalness={0.2} roughness={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+/** Bateria 12 V de chumbo-acido: caixa, tampas de celula e os dois polos. */
+function Battery(): JSX.Element {
+  return (
+    <group>
+      <mesh>
+        <boxGeometry args={[2.0, 1.5, 1.2]} />
+        <meshStandardMaterial color="#1e2836" metalness={0.15} roughness={0.75} />
+      </mesh>
+      {/* Tampa superior */}
+      <mesh position={[0, 0.8, 0]}>
+        <boxGeometry args={[2.0, 0.16, 1.2]} />
+        <meshStandardMaterial color="#2c3746" metalness={0.15} roughness={0.7} />
+      </mesh>
+      {/* Tampas das celulas */}
+      {[-0.7, -0.23, 0.23, 0.7].map((x) => (
+        <mesh key={x} position={[x, 0.92, 0]}>
+          <cylinderGeometry args={[0.15, 0.15, 0.1, 14]} />
+          <meshStandardMaterial color="#3a4657" metalness={0.1} roughness={0.8} />
+        </mesh>
+      ))}
+      {/* Polo positivo (vermelho) e negativo (preto) */}
+      <mesh position={[-0.72, 1.06, 0.36]}>
+        <cylinderGeometry args={[0.15, 0.18, 0.28, 14]} />
+        <meshStandardMaterial color="#c0392b" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[0.72, 1.06, 0.36]}>
+        <cylinderGeometry args={[0.13, 0.16, 0.26, 14]} />
+        <meshStandardMaterial color="#111417" metalness={0.6} roughness={0.45} />
+      </mesh>
+      {/* Etiqueta */}
+      <mesh position={[0, 0.05, 0.61]}>
+        <planeGeometry args={[1.5, 0.6]} />
+        <meshStandardMaterial color="#d8dee9" metalness={0.02} roughness={0.9} />
+      </mesh>
+    </group>
+  );
+}
+
 /** Registro de pecas por id. */
 export const PART_MODELS: Record<string, () => JSX.Element> = {
   injector: Injector,
@@ -1126,6 +1794,7 @@ export const PART_MODELS: Record<string, () => JSX.Element> = {
   crankcase: CrankcasePart,
   // --- injecao eletronica (Aula 4) ---
   'maf-sensor': MafSensor,
+  'tmaf-sensor': TmafSensor,
   'iac-valve': IacValve,
   'fuel-rail': FuelRail,
   'fuel-pressure-regulator': FuelPressureRegulator,
@@ -1143,6 +1812,20 @@ export const PART_MODELS: Record<string, () => JSX.Element> = {
   'ibs-sensor': IbsSensor,
   'nox-sensor': NoxSensor,
   'lambda-planar': LambdaPlanar,
+  'injector-cutaway': InjectorCutaway,
+  'cmp-sensor': CmpSensor,
+  'egt-sensor': EgtSensor,
+  'catalytic-converter': CatalyticConverter,
+  'nox-catalyst': NoxCatalyst,
+  'egr-valve': EgrValve,
+  canister: Canister,
+  'purge-valve': PurgeValve,
+  'hp-fuel-pump': HpFuelPump,
+  'obd-connector': ObdConnector,
+  'can-bus': CanBus,
+  'mil-lamp': MilLamp,
+  'immobilizer-antenna': ImmobilizerAntenna,
+  battery: Battery,
   'trigger-wheel': TriggerWheel,
 };
 
@@ -1176,9 +1859,10 @@ export const PART_META: Record<string, { namePt: string; system: string; concept
     conceptPt: 'Le a temperatura do ar admitido e/ou do liquido de arrefecimento.',
   },
   'lambda-sensor': {
-    namePt: 'Sonda lambda (O2)',
+    namePt: 'Sonda lambda banda estreita (4 fios)',
     system: 'Sensores',
-    conceptPt: 'Mede o oxigenio no escape para a ECU corrigir a mistura (rica/pobre).',
+    conceptPt:
+      'Tipo dedal. Gera a propria tensao: 900 mV rica, 450 mV lambda=1, 100 mV pobre. So diz o LADO da mistura, nao o quanto.',
   },
   'knock-sensor': {
     namePt: 'Sensor de detonacao (knock)',
@@ -1271,6 +1955,12 @@ export const PART_META: Record<string, { namePt: string; system: string; concept
     system: 'Injecao / admissao',
     conceptPt: 'Mede a massa de ar por fio ou filme quente: mais ar passa, mais calor leva embora.',
   },
+  'tmaf-sensor': {
+    namePt: 'Medidor de massa e temperatura do ar (TMAF)',
+    system: 'Injecao / admissao',
+    conceptPt:
+      'Mesmo medidor de massa de ar com um NTC junto: a anteninha dentro do duto le a temperatura.',
+  },
   'iac-valve': {
     namePt: 'Valvula de marcha lenta (IAC)',
     system: 'Injecao / admissao',
@@ -1352,14 +2042,99 @@ export const PART_META: Record<string, { namePt: string; system: string; concept
     conceptPt: 'Depois do catalisador, mede NOx em ppm; tem modulo proprio falando CAN com a ECU.',
   },
   'lambda-planar': {
-    namePt: 'Sonda planar (em corte)',
+    namePt: 'Sonda planar em corte (base da banda larga)',
     system: 'Injecao / escape',
-    conceptPt: 'Elemento em laminas finas: opera em ~10 s contra mais de 1 minuto da sonda dedal.',
+    conceptPt:
+      'Laminas finas: aquece em ~10 s contra 1 min da dedal. Duas celulas (Nernst e bombeamento) separadas pela camara de difusao formam a banda larga.',
+  },
+  'injector-cutaway': {
+    namePt: 'Injetor em corte',
+    system: 'Injecao / combustivel',
+    conceptPt:
+      'Corte longitudinal: microfiltro e aneis sao o kit de reparo; microfiltro e disco de furos sao o que entope e pede limpeza.',
+  },
+  'cmp-sensor': {
+    namePt: 'Sensor de fase (CMP)',
+    system: 'Sensores',
+    conceptPt:
+      'Le a roda do comando por efeito Hall e diz em qual VOLTA o motor esta: sem ele a ECU nao sabe separar admissao de escape.',
+  },
+  'egt-sensor': {
+    namePt: 'Sensor de temperatura dos gases (EGT)',
+    system: 'Injecao / escape',
+    conceptPt:
+      'Sonda longa dentro do escape. Protege catalisador e turbina contra superaquecimento e habilita a regeneracao do catalisador de NOx.',
+  },
+  'catalytic-converter': {
+    namePt: 'Catalisador de tres vias',
+    system: 'Injecao / escape',
+    conceptPt:
+      'Oxida CO e HC e reduz NOx ao mesmo tempo, mas so dentro da janela estreita em volta de lambda = 1. Por isso a sonda existe.',
+  },
+  'nox-catalyst': {
+    namePt: 'Catalisador de NOx',
+    system: 'Injecao / escape',
+    conceptPt:
+      'Acumulador usado na injecao direta estratificada, que roda pobre: armazena NOx e depois queima o estoque num pulso rico.',
+  },
+  'egr-valve': {
+    namePt: 'Valvula EGR',
+    system: 'Injecao / escape',
+    conceptPt:
+      'Devolve parte dos gases de escape para a admissao. Baixa a temperatura da queima e derruba a formacao de NOx.',
+  },
+  canister: {
+    namePt: 'Canister',
+    system: 'Alimentacao',
+    conceptPt:
+      'Caixa de carvao ativado que prende os vapores do tanque em vez de solta-los na atmosfera.',
+  },
+  'purge-valve': {
+    namePt: 'Valvula de purga do canister',
+    system: 'Alimentacao',
+    conceptPt:
+      'A ECU abre em PWM para o motor aspirar os vapores guardados no canister e queima-los. Se trava aberta, bagunca a marcha lenta.',
+  },
+  'hp-fuel-pump': {
+    namePt: 'Bomba de alta pressao',
+    system: 'Injecao / combustivel',
+    conceptPt:
+      'Acionada por um came, eleva a pressao de ~5 bar para dezenas ou centenas de bar. E ela que define a injecao DIRETA.',
+  },
+  'obd-connector': {
+    namePt: 'Conector de diagnostico (OBD2)',
+    system: 'Controle',
+    conceptPt:
+      'Tomada de 16 vias padronizada: por ela o scanner conversa com a ECU pelas linhas CAN e le codigos e parametros.',
+  },
+  'can-bus': {
+    namePt: 'Rede CAN (par trancado)',
+    system: 'Controle',
+    conceptPt:
+      'Nao e peca, e barramento: dois fios trancados (CAN H e CAN L) com um resistor de 120 ohm em cada ponta.',
+  },
+  'mil-lamp': {
+    namePt: 'Luz espia de anomalia (MIL)',
+    system: 'Controle',
+    conceptPt:
+      'A lampada do painel. Acesa fixa e falha detectada; piscando e falha de combustao que pode destruir o catalisador.',
+  },
+  'immobilizer-antenna': {
+    namePt: 'Imobilizador (antena + transponder)',
+    system: 'Controle',
+    conceptPt:
+      'Antena em volta do comutador le o chip da chave. Sem o codigo certo a ECU bloqueia injecao e ignicao.',
   },
   'trigger-wheel': {
     namePt: 'Roda fonica 60-2',
     system: 'Injecao / sensores',
     conceptPt: 'A falha de dois dentes da a referencia angular absoluta do virabrequim.',
+  },
+  battery: {
+    namePt: 'Bateria 12 V',
+    system: 'Controle',
+    conceptPt:
+      'Fonte de tudo. Em repouso 12,4 a 12,7 V; com o motor ligado o alternador segura 13,8 a 14,4 V. Tensao baixa faz sensor mentir e a ECU errar.',
   },
 };
 
@@ -1412,6 +2187,16 @@ export const PART_GLB: Record<string, string> = {
   'ibs-sensor': '/models/parts/ibs-sensor.glb',
   'nox-sensor': '/models/parts/nox-sensor.glb',
   'lambda-planar': '/models/parts/lambda-planar.glb',
+  'injector-cutaway': '/models/parts/injector-cutaway.glb',
+  'cmp-sensor': '/models/parts/cmp-sensor.glb',
+  'egt-sensor': '/models/parts/egt-sensor.glb',
+  'catalytic-converter': '/models/parts/catalytic-converter.glb',
+  'nox-catalyst': '/models/parts/nox-catalyst.glb',
+  'egr-valve': '/models/parts/egr-valve.glb',
+  canister: '/models/parts/canister.glb',
+  'purge-valve': '/models/parts/purge-valve.glb',
+  'hp-fuel-pump': '/models/parts/hp-fuel-pump.glb',
+  'obd-connector': '/models/parts/obd-connector.glb',
 };
 
 export interface PartAnnotation {
@@ -1445,9 +2230,11 @@ export const PART_ANNOTATIONS: Record<string, PartAnnotation[]> = {
     { pos: [0, -0.7, 0], label: 'Ponta NTC' },
   ],
   'lambda-sensor': [
-    { pos: [0, 1.3, 0], label: '4 fios' },
-    { pos: [0.45, 0.35, 0], label: 'Corpo hex (rosca)' },
-    { pos: [0, -0.6, 0], label: 'Ponta ceramica' },
+    { pos: [-0.1, 1.6, 0], label: '2 fios do aquecedor' },
+    { pos: [0.55, 1.35, 0], label: 'Sinal (preto)' },
+    { pos: [0.6, 1.05, 0], label: 'Massa (cinza)' },
+    { pos: [0.55, 0.35, 0], label: 'Corpo hex (rosca)' },
+    { pos: [0, -0.85, 0], label: 'Ponta dedal ceramica' },
   ],
   'knock-sensor': [
     { pos: [0, 0.55, 0], label: 'Furo de fixacao' },
@@ -1564,9 +2351,84 @@ export const PART_ANNOTATIONS: Record<string, PartAnnotation[]> = {
     { pos: [0.95, 0.95, 0], label: 'Modulo (CAN)' },
   ],
   'lambda-planar': [
-    { pos: [0, -0.35, 0.35], label: 'Lamina ceramica' },
-    { pos: [0.45, -0.9, 0], label: 'Aquecedor integrado' },
+    { pos: [-0.5, -0.15, 0.3], label: 'Celula de bombeamento' },
+    { pos: [0, -1.15, 0.3], label: 'Camara de difusao' },
+    { pos: [0.55, -0.5, 0.3], label: 'Celula de Nernst (ar de referencia)' },
+    { pos: [0.6, 0.15, 0.3], label: 'Aquecedor (PWM)' },
     { pos: [0, 1.1, 0], label: 'Saida dos fios' },
+  ],
+  'injector-cutaway': [
+    { pos: [0, 1.35, 0], label: 'Anel superior + entrada' },
+    { pos: [0.5, 0.7, 0], label: 'Microfiltro (entope)' },
+    { pos: [-0.6, 0.2, 0], label: 'Enrolamento da bobina' },
+    { pos: [0.4, -0.05, 0], label: 'Mola interna' },
+    { pos: [-0.45, -0.45, 0], label: 'Agulha' },
+    { pos: [0.5, -0.78, 0], label: 'Anel inferior' },
+    { pos: [0, -1.3, 0], label: 'Disco de furos (limpeza)' },
+  ],
+  'cmp-sensor': [
+    { pos: [0, 1.25, 0], label: 'Conector de 3 vias' },
+    { pos: [0.95, 0.15, 0], label: 'Furo de fixacao' },
+    { pos: [0, -0.95, 0], label: 'Face Hall (le a roda do comando)' },
+  ],
+  'egt-sensor': [
+    { pos: [0.45, 1.75, 0], label: 'Conector' },
+    { pos: [0.4, 1.0, 0], label: 'Cabo blindado' },
+    { pos: [0.45, 0.15, 0], label: 'Rosca no escape' },
+    { pos: [0.3, -1.5, 0], label: 'Ponta dentro dos gases' },
+  ],
+  'catalytic-converter': [
+    { pos: [-1.5, 0.25, 0], label: 'Entrada dos gases' },
+    { pos: [0, 0.85, 0], label: 'Manta termica' },
+    { pos: [0.55, 0.3, 0.6], label: 'Bossa da sonda' },
+    { pos: [1.5, 0.25, 0], label: 'Saida' },
+  ],
+  'nox-catalyst': [
+    { pos: [0, 0.85, 0], label: 'Acumulador de NOx' },
+    { pos: [0.7, 0.25, 0.55], label: 'Sonda de NOx' },
+    { pos: [-0.7, -0.55, 0.55], label: 'Sensor de temperatura' },
+  ],
+  'egr-valve': [
+    { pos: [0.75, 0.9, 0], label: 'Atuador eletrico' },
+    { pos: [-0.75, 0.15, 0], label: 'Haste (pintle)' },
+    { pos: [0, -0.42, 0.75], label: 'Passagem dos gases' },
+    { pos: [-0.95, -0.55, 0], label: 'Flange no coletor' },
+  ],
+  canister: [
+    { pos: [0, 1.25, 0], label: 'Bocais: tanque, purga e ar' },
+    { pos: [0, 0, 0.75], label: 'Carvao ativado' },
+    { pos: [-1.35, -0.2, 0], label: 'Suporte' },
+  ],
+  'purge-valve': [
+    { pos: [0, 0.95, 0], label: 'Comando da ECU (PWM)' },
+    { pos: [-1.15, 0, 0], label: 'Vem do canister' },
+    { pos: [1.15, 0, 0], label: 'Vai para a admissao' },
+  ],
+  'hp-fuel-pump': [
+    { pos: [0, 0.95, 0], label: 'Amortecedor de pulsacao' },
+    { pos: [-1.45, 0.05, 0], label: 'Valvula dosadora' },
+    { pos: [1.1, 0.15, 0], label: 'Saida de alta pressao' },
+    { pos: [0, -1.15, 0], label: 'Acionamento pelo came' },
+  ],
+  'obd-connector': [
+    { pos: [0, 0.6, 0.4], label: '16 vias padronizadas' },
+    { pos: [-1.0, -0.35, 0], label: 'Pinos 6 e 14: CAN H e CAN L' },
+    { pos: [0, 0, -0.85], label: 'Chicote para a ECU' },
+  ],
+  'can-bus': [
+    { pos: [0, 0.45, 0], label: 'CAN H (amarelo) e CAN L (verde)' },
+    { pos: [0, -0.45, 0], label: 'Par trancado: cancela ruido' },
+    { pos: [2.2, 0.35, 0], label: 'Resistor de 120 ohm' },
+    { pos: [-2.9, 0.35, 0], label: 'Resistor de 120 ohm' },
+  ],
+  'mil-lamp': [
+    { pos: [0, 0.85, 0], label: 'Acesa fixa: falha memorizada' },
+    { pos: [0, -0.85, 0], label: 'Piscando: falha de combustao' },
+  ],
+  'immobilizer-antenna': [
+    { pos: [0.15, 0.85, 0], label: 'Antena no comutador' },
+    { pos: [-1.75, 0.65, 0], label: 'Transponder da chave' },
+    { pos: [0.6, -0.75, 0], label: 'Vai para a ECU' },
   ],
   'trigger-wheel': [
     { pos: [1.5, 0, 0], label: 'Falha de 2 dentes' },

@@ -10,6 +10,10 @@ import { MultimeterScene } from './scenes/MultimeterScene';
 import { CircuitMeterScene } from './scenes/CircuitMeterScene';
 import { EngineScene } from './scenes/EngineScene';
 import { EngineScene2, EngineScene4 } from './scenes/inlineEngine';
+import { LambdaNarrowScene } from './scenes/LambdaNarrowScene';
+import { LambdaWideScene } from './scenes/LambdaWideScene';
+import { LambdaHeaterScene } from './scenes/LambdaHeaterScene';
+import { MotronicMapScene } from './scenes/MotronicMapScene';
 
 /** Cenas 3D disponiveis para as aulas (lousa virtual). */
 export const LESSON_SCENES: Record<string, () => JSX.Element> = {
@@ -25,4 +29,8 @@ export const LESSON_SCENES: Record<string, () => JSX.Element> = {
   engine: EngineScene,
   engine2: EngineScene2,
   engine4: EngineScene4,
+  lambdaNarrow: LambdaNarrowScene,
+  lambdaWide: LambdaWideScene,
+  lambdaHeater: LambdaHeaterScene,
+  motronicMap: MotronicMapScene,
 };

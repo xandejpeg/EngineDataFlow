@@ -18,7 +18,15 @@ export type LessonBlock =
       definitionPt: string;
       color: string;
     }
-  | { kind: 'scene'; sceneId: string; captionPt?: string; heightPx?: number; interactive?: boolean };
+  | {
+      kind: 'scene';
+      sceneId: string;
+      captionPt?: string;
+      heightPx?: number;
+      interactive?: boolean;
+      /** Rompe a coluna de texto e ocupa a largura da tela. */
+      wide?: boolean;
+    };
 
 export interface LessonPage {
   id: string;
@@ -32,6 +40,8 @@ export interface Lesson {
   titlePt: string;
   tag: string;
   summaryPt?: string;
+  /** Aula pronta mas ainda fora do front; sai da listagem, o conteudo fica guardado. */
+  rascunho?: boolean;
   pages: LessonPage[];
 }
 
@@ -462,11 +472,310 @@ export const COURSE_LESSONS: Record<string, Lesson[]> = {
         },
       ],
     },
+    {
+      id: 'aula-4-componentes-e-sensores',
+      numero: 4,
+      titlePt: 'Componentes e sensores do motor',
+      tag: 'sensores',
+      summaryPt:
+        'O mapa completo do sistema de injecao eletronica em 3D: as 26 pecas nos lugares certos, o caminho do ar, do combustivel e do escape, o chicote saindo da ECU e as duas sondas lambda, uma antes e outra depois do catalisador.',
+      pages: [
+        {
+          id: 'p1',
+          titlePt: 'O mapa do sistema',
+          blocks: [
+            {
+              kind: 'question',
+              textPt:
+                'Antes de medir qualquer sensor, uma pergunta: voce sabe onde ele fica e com quem ele conversa?',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Todo diagrama de injecao eletronica que voce vai encontrar em manual e apostila e a mesma coisa desenhada de jeitos diferentes. Quem entende o desenho conserta qualquer motor; quem so decorou nome de peca fica perdido assim que muda a marca.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Esse mapa aqui embaixo e o sistema inteiro montado em 3D. O motor esta em corte de proposito: da para ver o pistao subindo, as valvulas abrindo, o jato do injetor entrando na camara e a faisca da vela. Cada numero e uma peca de verdade, no lugar em que ela fica no motor, e a lista da direita leva a camera ate ela.',
+            },
+            {
+              kind: 'scene',
+              sceneId: 'motronicMap',
+              heightPx: 860,
+              wide: true,
+              interactive: true,
+              captionPt:
+                'Clique num numero, no desenho ou na lista, e a camera centraliza a peca. O filtro isola ar, combustivel, ignicao, sensores, escape ou controle.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'Repare nas bolinhas correndo: azul e o ar entrando, laranja e o combustivel indo do tanque ate a galeria e vermelho e o gas queimado saindo. Todo o resto do sistema existe para acertar a proporcao entre esses tres.',
+            },
+          ],
+        },
+        {
+          id: 'p2',
+          titlePt: 'Como o sistema se organiza',
+          blocks: [
+            {
+              kind: 'text',
+              textPt:
+                'Por mais peca que tenha no mapa, o sistema so faz uma coisa: MEDIR o que esta entrando, DECIDIR quanto de combustivel e quando dar a faisca, e CONFERIR no escape se acertou. Sensor mede, ECU decide, atuador executa, sonda confere.',
+            },
+            {
+              kind: 'heading',
+              textPt: 'O caminho do ar',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O ar entra pelo medidor de massa (2), que pesa quanto ar esta entrando em gramas por segundo. Passa pelo corpo de borboleta motorizado (9), que hoje nao tem mais cabo de acelerador: quem abre a borboleta e um motor eletrico comandado pela ECU. Chega no coletor, onde o sensor de pressao (11) diz o quanto o motor esta carregado. A EGR (12) devolve uma parte do gas de escape para dentro dessa mesma admissao, para baixar a temperatura da queima.',
+            },
+            {
+              kind: 'heading',
+              textPt: 'O caminho do combustivel',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O modulo dentro do tanque (18) manda combustivel para a frente. Na injecao direta ele passa ainda pela bomba de alta pressao (10), movida pelo comando, que leva a pressao de uns 4 bar para 50 a 200 bar. Essa pressao fica guardada na galeria (14), vigiada pelo sensor de pressao (13), e as valvulas de injecao (15) soltam a quantidade certa. O vapor que evapora no tanque nao vai para o ar: fica preso no canister (1) ate a valvula de purga (8) mandar ele para o motor queimar.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'Quem determina a quantidade de combustivel e o TEMPO que o injetor fica aberto, medido em milissegundos. Por isso a pressao precisa ser conhecida: se ela muda e o tempo continua o mesmo, a quantidade muda junto.',
+            },
+            {
+              kind: 'heading',
+              textPt: 'Quando injetar e quando dar faisca',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O sensor de rotacao (17) le a roda dentada do virabrequim e da a rotacao e a posicao. O sensor de fase (20) le o comando e diz em qual das duas voltas o motor esta. Com os dois a ECU sabe exatamente qual cilindro esta em compressao e comanda a bobina (19) na hora certa. O sensor de detonacao (16) escuta a batida de pino e faz a ECU atrasar o ponto antes de quebrar o motor. O sensor de temperatura (21) autoriza a mistura mais rica enquanto o motor esta frio.',
+            },
+            {
+              kind: 'heading',
+              textPt: 'A prova real: o escape',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Depois da queima vem a conferencia. A sonda antes do catalisador (22) mede o oxigenio que sobrou e e ela que corrige a injecao a cada instante. O pre-catalisador (23) e o catalisador de NOx (25) limpam o gas, com o sensor de temperatura dos gases (24) protegendo a ceramica. E a sonda depois do catalisador (26) nao corrige nada: ela audita se o catalisador ainda esta trabalhando.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'Essa e a diferenca que confunde muita gente na oficina: a sonda da frente COMANDA a mistura, a sonda de tras JULGA o catalisador. Se as duas comecarem a desenhar o mesmo sinal oscilando, o catalisador acabou.',
+            },
+            {
+              kind: 'heading',
+              textPt: 'Quem conversa com quem',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Ligue o chicote no mapa e olhe quantos fios saem da ECU (3). Tudo isso comeca na bateria (27): se ela estiver fraca, todo sensor entrega valor errado e a central registra defeito que nao existe. A ECU ainda fala com o resto do carro pela rede CAN (7), com dois fios trancados, avisa o motorista pela lampada de anomalia (5), so deixa o motor pegar se o imobilizador (6) reconhecer a chave, e entrega tudo isso para o seu scanner pela tomada de diagnostico (4).',
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'aula-4-sonda-lambda',
+      numero: 5,
+      titlePt: 'Sonda lambda',
+      tag: 'sensores',
+      rascunho: true,
+      summaryPt:
+        'Banda estreita x banda larga: como a sonda le o oxigenio do escape, por que o sinal fica oscilando entre 100 e 900 mV, o que a ECU corrige a cada cruzamento, como a banda larga se equilibra com a corrente de bombeamento e o que e o PWM do aquecedor.',
+      pages: [
+        {
+          id: 'p1',
+          titlePt: 'Sonda de banda estreita: o que ela realmente le',
+          blocks: [
+            { kind: 'question', textPt: 'A sonda lambda mede combustivel? Nao. Ela mede OXIGENIO.' },
+            {
+              kind: 'text',
+              textPt:
+                'A sonda fica rosqueada no escape e compara o oxigenio que sobrou na queima com o oxigenio do ar atmosferico, que entra por dentro dela (o AR DE REFERENCIA). Essa diferenca entre os dois lados de uma ceramica de ZIRCONIA gera uma tensao — repare que a sonda de banda estreita NAO e alimentada para medir: ela GERA a propria tensao, como uma pilha minuscula.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O fator LAMBDA e so uma conta: lambda = quantidade de ar que entrou dividida pela quantidade de ar que aquele combustivel precisava. Lambda = 1 e a ESTEQUIOMETRIA (na gasolina, cerca de 14,7 kg de ar para 1 kg de combustivel). Lambda menor que 1 = falta ar = mistura RICA. Lambda maior que 1 = sobra ar = mistura POBRE.',
+            },
+            { kind: 'heading', textPt: 'A curva: 900 mV rica, 450 mV lambda 1, 100 mV pobre' },
+            {
+              kind: 'scene',
+              sceneId: 'lambdaNarrow',
+              captionPt:
+                'Tela do osciloscopio ligada no fio de sinal da sonda. A linha laranja e o divisor de agua: 450 mV. Acima dela (ate ~900 mV) a mistura esta RICA — quase nao sobrou oxigenio. Abaixo (ate ~100 mV) esta POBRE — sobrou oxigenio. Use MISTURA para provocar defeitos (ar falso e injetor vazando) e CONTROLE para desligar a malha fechada e ver o sinal parar de oscilar.',
+              heightPx: 520,
+              interactive: true,
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O detalhe que muda tudo: a curva da banda estreita e QUASE VERTICAL em lambda = 1. Uma variacao minima da mistura joga a tensao de 100 para 900 mV. Ou seja, essa sonda funciona como um INTERRUPTOR: ela diz de que LADO a mistura esta, mas nunca diz o QUANTO. Ela nao sabe diferenciar "um pouco pobre" de "muito pobre" — nos dois casos ela entrega perto de 100 mV.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'Abaixo de cerca de 300 °C a ceramica nao conduz e a sonda simplesmente NAO gera sinal. Por isso ela tem aquecedor e por isso o motor comeca sempre em malha aberta. Uma sonda "morta" no scanner com o motor frio pode ser apenas uma sonda ainda fria.',
+            },
+            { kind: 'heading', textPt: 'Os fios: 1, 3, 4 e 5 fios' },
+            {
+              kind: 'text',
+              textPt:
+                'UM FIO: so o sinal; a massa volta pela rosca no escape (sonda antiga, sem aquecedor). TRES FIOS: sinal + os dois fios do aquecedor (a massa do elemento continua sendo a carcaca). QUATRO FIOS: sinal, massa do elemento e os dois do aquecedor — e a montagem mais comum hoje, porque massa propria da leitura mais limpa. CINCO FIOS (e SEIS no chicote): ja e sonda de BANDA LARGA, com duas celulas dentro; o fio extra do chicote e o resistor de calibracao que fica dentro do conector.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Codigo de cores mais usado: CINZA = positivo do aquecedor; BRANCO = negativo do aquecedor (e o fio que a ECU chaveia em PWM); AMARELO = referencia negativa do elemento sensor; PRETO = alimentacao positiva do elemento sensor; VERMELHO = sinal. Confira sempre no esquema do fabricante antes de medir.',
+            },
+          ],
+        },
+        {
+          id: 'p2',
+          titlePt: 'Malha fechada: por que o sinal nunca fica parado',
+          blocks: [
+            {
+              kind: 'question',
+              textPt:
+                'Se a sonda so diz o LADO da mistura, como a ECU acerta a estequiometria?',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Ela corrige por tentativa, o tempo todo. Le acima de 450 mV (rica) e vai DIMINUINDO o tempo de injecao; quando o sinal cruza para baixo de 450 mV (pobre), inverte e vai AUMENTANDO. Como a sonda nunca avisa "chegou", a ECU sempre passa do ponto e tem que voltar. O resultado e uma oscilacao permanente entre cerca de 100 e 900 mV, tipicamente de 1 a 2 Hz com o motor em marcha lenta aquecido.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'Essa oscilacao NAO e defeito: e o metodo. O que interessa e a MEDIA no tempo, e ela cai exatamente em lambda = 1. Sinal de sonda parado no meio da tela, sem oscilar, com o motor quente e em malha fechada, e que e sintoma ruim.',
+            },
+            {
+              kind: 'scene',
+              sceneId: 'lambdaNarrow',
+              captionPt:
+                'Repita o teste olhando agora para a CORRECAO (fuel trim). Em NORMAL ela fica perto de zero. Escolha AR FALSO: a sonda vai para pobre e a correcao sobe e fica presa no positivo — a ECU esta compensando ar que nao deveria estar entrando. Escolha INJETOR VAZANDO: a correcao vai para o negativo. Depois troque para MALHA ABERTA e veja a correcao congelar.',
+              heightPx: 520,
+              interactive: true,
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Existem duas correcoes no scanner. A correcao RAPIDA (short term fuel trim) e essa que fica pulando junto com a sonda. A correcao APRENDIDA (long term fuel trim) e a media que a ECU memoriza para compensar desgaste, entrada de ar falsa, bico sujo e filtro velho. Se o trim aprendido esta muito positivo, o motor esta cronicamente pobre; muito negativo, cronicamente rico.',
+            },
+            {
+              kind: 'heading',
+              textPt: 'Por que tudo isso importa: o catalisador',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O catalisador de TRES VIAS so consegue fazer as tres reacoes ao mesmo tempo (oxidar CO, oxidar HC e reduzir NOx) dentro de uma janela estreitissima em volta de lambda = 1, algo como mais ou menos 1%. Fora dessa janela ele perde eficiencia. O catalisador ainda ARMAZENA oxigenio, o que suaviza a oscilacao da mistura que chega nele.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Por isso o carro tem uma segunda sonda DEPOIS do catalisador. O sinal dela tem que ser quase RETO, la pelos 600 a 700 mV. Se a sonda de tras comeca a oscilar parecido com a da frente, o catalisador perdeu a capacidade de armazenar oxigenio — e o diagnostico de catalisador com baixa eficiencia.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'A ECU entra em MALHA ABERTA (ignora a sonda e usa o mapa) em tres situacoes classicas: motor frio ou sonda ainda fria, aceleracao de plena carga (onde ela enriquece de proposito para dar potencia e proteger o motor) e desaceleracao com corte de combustivel.',
+            },
+          ],
+        },
+        {
+          id: 'p3',
+          titlePt: 'Banda larga: as duas celulas e a corrente de bombeamento',
+          blocks: [
+            {
+              kind: 'question',
+              textPt: 'E quando a ECU precisa saber o QUANTO, e nao so o lado?',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Injecao direta com carga estratificada, diesel e controle de plena carga trabalham longe de lambda = 1. A banda estreita nao serve la: ela satura. A solucao foi a sonda de BANDA LARGA, que na construcao e a mesma sonda PLANAR em laminas, so que com DUAS celulas.',
+            },
+            { kind: 'heading', textPt: 'Como ela se equilibra' },
+            {
+              kind: 'scene',
+              sceneId: 'lambdaWide',
+              captionPt:
+                'Corte da sonda planar de banda larga. O gas de escape nao chega direto na celula de medicao: ele passa por uma CAMARA DE DIFUSAO com entrada controlada. A celula de Nernst (direita) mede a camara igual a uma banda estreita. A celula de bombeamento (esquerda) empurra ions de oxigenio para dentro ou para fora. Arraste o FATOR LAMBDA e acompanhe a corrente e o sentido das bolinhas.',
+              heightPx: 520,
+              interactive: true,
+            },
+            {
+              kind: 'text',
+              textPt:
+                'A ECU faz o seguinte: ela nao deixa a camara de difusao sair de lambda = 1 nunca. Ela olha a celula de Nernst e, sempre que a leitura sai dos 450 mV, aplica uma CORRENTE DE BOMBEAMENTO na outra celula para trazer a camara de volta. Se a mistura esta POBRE, sobra oxigenio na camara e a corrente bombeia o O2 para FORA: corrente POSITIVA. Se esta RICA, falta oxigenio e a corrente bombeia para DENTRO: corrente NEGATIVA. Em lambda = 1 exato nao precisa bombear nada: corrente ZERO.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Sacou a jogada? A grandeza medida deixou de ser tensao e passou a ser CORRENTE — e a corrente necessaria e proporcional ao desvio. Como essa relacao e LINEAR, a sonda consegue informar lambda desde cerca de 0,7 (bem rica) ate ar puro, dizendo exatamente o quanto. Nao e mais um interruptor, e uma regua.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'Na pratica voce raramente ve a corrente direto: o scanner ja mostra convertido em lambda ou em AFR. E o aquecedor dela e obrigatorio e mais forte, porque ela trabalha entre 600 e 800 °C, contra os ~300 °C minimos da banda estreita. Cuidado ao testar: NAO se mede sonda de banda larga com a mesma logica de tensao da banda estreita.',
+            },
+          ],
+        },
+        {
+          id: 'p4',
+          titlePt: 'O aquecedor e o sinal PWM',
+          blocks: [
+            {
+              kind: 'question',
+              textPt: 'O que e aquele sinal PWM que o osciloscopio mostra no fio do aquecedor?',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'PWM quer dizer modulacao por largura de pulso. A ECU NAO varia a tensao do aquecedor — ela liga e desliga a MASSA dele muito rapido e muda a proporcao de tempo ligado. Essa proporcao e o DUTY CYCLE. A potencia media entregue e o duty multiplicado pelos 12 V: 50% de duty equivale a uns 6 V medios; 100% de duty e o aquecedor ligado direto.',
+            },
+            {
+              kind: 'scene',
+              sceneId: 'lambdaHeater',
+              captionPt:
+                'A tela mostra o trem de pulsos no fio de comando do aquecedor. Deixe em RAMPA DA ECU e veja o duty subir devagar e a ceramica acompanhar. Depois passe para MANUAL e jogue o duty acima de 90% com a sonda ainda fria para ver o choque termico.',
+              heightPx: 500,
+              interactive: true,
+            },
+            {
+              kind: 'text',
+              textPt:
+                'O PWM serve para duas coisas. A primeira e evitar CHOQUE TERMICO. No arranque o escape ainda esta frio e cheio de agua condensada da propria queima. Se a ECU jogasse 100% de duty logo de cara, a ceramica esquentaria de uma vez, encontraria essa agua e TRINCARIA. Entao ela sobe o duty em rampa. A segunda e manter a temperatura de trabalho depois de aquecida, sem cozinhar o elemento.',
+            },
+            {
+              kind: 'text',
+              textPt:
+                'Na sonda de banda larga tem um detalhe elegante: a ECU usa a RESISTENCIA INTERNA da celula de Nernst como termometro. A resistencia da ceramica cai conforme ela esquenta, entao a ECU mede essa resistencia e fecha uma malha em cima do aquecedor, ajustando o duty para segurar a temperatura no alvo.',
+            },
+            {
+              kind: 'note',
+              textPt:
+                'E aqui aparece a diferenca pratica entre a sonda DEDAL e a PLANAR: a dedal tem muito mais massa ceramica para aquecer e normalmente o aquecedor e ligado direto, sem PWM — ela leva mais de um minuto para entrar em operacao. A planar e uma lamina fina com o aquecedor impresso junto e chega la em cerca de 10 segundos. Menos tempo em malha aberta significa menos consumo e menos emissao no arranque, que e justamente o pior momento do ciclo de emissoes.',
+            },
+          ],
+        },
+      ],
+    },
   ],
 };
 
 export function getCourseLessons(courseId: string): Lesson[] {
-  return COURSE_LESSONS[courseId] ?? [];
+  return (COURSE_LESSONS[courseId] ?? []).filter((l) => !l.rascunho);
 }
 
 export function getLesson(courseId: string, lessonId: string): Lesson | undefined {
