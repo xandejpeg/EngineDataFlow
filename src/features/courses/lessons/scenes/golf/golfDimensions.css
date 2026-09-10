@@ -1,0 +1,23 @@
+.golf-dimensions { border-block: 1px solid #c6d3cf; padding-block: 10px; min-width: 0; }
+.golf-dimensions summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.golf-dimensions-content { display: grid; gap: 12px; padding-top: 12px; font-size: 12px; line-height: 1.5; min-width: 0; overflow-wrap: anywhere; }
+.golf-dimensions-content p { margin: 0; }
+.golf-dimensions-content select { width: 100%; min-width: 0; }
+.golf-dimension-axle h4 { font-size: 13px; margin: 8px 0; }
+.golf-dimension-axle dl, .golf-dimension-coordinates { margin: 0; }
+.golf-dimension-axle dl > div { display: grid; grid-template-columns: minmax(60px, 1fr) minmax(0, 2fr); gap: 8px; padding-block: 7px; border-top: 1px solid #dce5e1; }
+.golf-dimension-axle dd { margin: 0; display: grid; gap: 2px; font-variant-numeric: tabular-nums; }
+.golf-dimension-axle [data-status="out-of-range"] dd > span:last-child { color: #943126; font-weight: 600; }
+.golf-dimension-axle [data-status="within-range"] dd > span:last-child { color: #20684e; font-weight: 600; }
+.golf-dimension-coordinates dd { margin: 0 0 10px; font-variant-numeric: tabular-nums; }
+.golf-dimension-coordinates dt { margin-top: 10px; font-weight: 600; }
+.golf-dimension-toggle { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.golf-dimension-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.golf-dimension-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.golf-dimension-legend small { flex-basis: 100%; }
+.golf-marker-hub, .golf-marker-arch { display: inline-block; width: 10px; height: 10px; background: #137789; }
+.golf-marker-hub { border-radius: 50%; }
+.golf-dimension-axle [data-selected="true"] { background: #faf0e5; box-shadow: inset 3px 0 #9c4913; padding-inline: 6px; }
+.golf-dimension-label { width: 132px; padding: 5px 7px; border-left: 2px solid #9c4913; background: #ffffffed; color: #65340f; font-size: 11px; line-height: 1.35; pointer-events: none; font-variant-numeric: tabular-nums; }
+.golf-dimension-label span, .golf-dimension-label strong, .golf-dimension-label small { display: block; }
+.golf-dimension-label strong { font-size: 13px; }

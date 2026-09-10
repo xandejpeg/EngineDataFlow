@@ -19,7 +19,7 @@ const LABEL = '#475569';
 
 function Label({ textPt, pos, title = false }: { textPt: string; pos: Vec3; title?: boolean }) {
   return (
-    <group position={pos} userData={{ labelText: textPt }}>
+    <group position={pos} userData={{ labelText: textPt, isTitle: title }}>
       <Text
         fontSize={title ? 0.32 : 0.24}
         color={title ? '#0f172a' : LABEL}
@@ -132,7 +132,11 @@ function FocusBoxNode({ box }: { box: FocusBox }) {
 function FocusPipeNode({ pipe, flowOn }: { pipe: FocusPipe; flowOn: boolean }) {
   return (
     <group>
-      {pipe.tube !== false && <Run points={pipe.points} r={pipe.r} color={pipe.color} />}
+      {pipe.tube !== false && (
+        <group userData={{ pipePoints: pipe.points }}>
+          <Run points={pipe.points} r={pipe.r} color={pipe.color} />
+        </group>
+      )}
       {pipe.flow && flowOn && (
         <Flow
           points={pipe.points}
@@ -148,6 +152,19 @@ function FocusPipeNode({ pipe, flowOn }: { pipe: FocusPipe; flowOn: boolean }) {
   );
 }
 
+/** Anda pelo traçado do cano e diz se ele passa por dentro do retangulo do texto. */
+function crossesText(pts: Vec3[], cx: number, cy: number, halfW: number): boolean {
+  for (let i = 1; i < pts.length; i++) {
+    const [ax, ay] = pts[i - 1];
+    const [bx, by] = pts[i];
+    for (let s = 0; s <= 20; s++) {
+      const u = s / 20;
+      if (Math.abs(ax + (bx - ax) * u - cx) < halfW && Math.abs(ay + (by - ay) * u - cy) < 0.3) return true;
+    }
+  }
+  return false;
+}
+
 /** So em dev: avisa no console quando uma legenda cai por cima de um corpo. */
 function useLabelOverlapCheck(root: React.RefObject<THREE.Group>, focus: PartFocus) {
   useEffect(() => {
@@ -156,16 +173,30 @@ function useLabelOverlapCheck(root: React.RefObject<THREE.Group>, focus: PartFoc
       const o = root.current;
       if (!o) return;
       const bodies: { name: string; box: THREE.Box3 }[] = [];
-      const labels: { text: string; at: THREE.Vector3 }[] = [];
+      const tubes: Vec3[][] = [];
+      const labels: { text: string; at: THREE.Vector3; title: boolean }[] = [];
       o.traverse((n) => {
         if (n.userData.bodyName) bodies.push({ name: String(n.userData.bodyName), box: new THREE.Box3().setFromObject(n) });
-        else if (n.userData.labelText) labels.push({ text: String(n.userData.labelText), at: n.getWorldPosition(new THREE.Vector3()) });
+        else if (n.userData.pipePoints) tubes.push(n.userData.pipePoints as Vec3[]);
+        else if (n.userData.labelText)
+          labels.push({
+            text: String(n.userData.labelText),
+            at: n.getWorldPosition(new THREE.Vector3()),
+            title: Boolean(n.userData.isTitle),
+          });
       });
       for (const l of labels) {
         const halfW = Math.min(5, l.text.length * 0.125) / 2;
         const r = (v: number) => Math.round(v * 100) / 100;
         if (Math.abs(l.at.x) > 9 || Math.abs(l.at.y) > 6.5) {
           console.warn(`[foco] legenda "${l.text}" fora do quadro em x ${r(l.at.x)} y ${r(l.at.y)}`);
+        }
+        // O nome da peca e grande: nao pode cair nem em cima de fio ou mangueira.
+        if (l.title && tubes.some((pts) => crossesText(pts, l.at.x, l.at.y, halfW))) {
+          console.warn(
+            `[foco] titulo "${l.text}" cai sobre um fio` +
+              ` | texto x[${r(l.at.x - halfW)} ${r(l.at.x + halfW)}] y ${r(l.at.y)}`,
+          );
         }
         for (const b of bodies) {
           const overX = l.at.x + halfW > b.box.min.x && l.at.x - halfW < b.box.max.x;

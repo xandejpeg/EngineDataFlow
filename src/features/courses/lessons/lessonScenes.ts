@@ -14,6 +14,7 @@ import { LambdaNarrowScene } from './scenes/LambdaNarrowScene';
 import { LambdaWideScene } from './scenes/LambdaWideScene';
 import { LambdaHeaterScene } from './scenes/LambdaHeaterScene';
 import { MotronicMapScene } from './scenes/MotronicMapScene';
+import { GolfCompareScene, GolfEngineScene, GolfFuelScene, GolfSystemsScene, GolfVehicleScene } from './scenes/golf/GolfLessonScene';
 
 /** Cenas 3D disponiveis para as aulas (lousa virtual). */
 export const LESSON_SCENES: Record<string, () => JSX.Element> = {
@@ -33,4 +34,9 @@ export const LESSON_SCENES: Record<string, () => JSX.Element> = {
   lambdaWide: LambdaWideScene,
   lambdaHeater: LambdaHeaterScene,
   motronicMap: MotronicMapScene,
+  golfVehicle: GolfVehicleScene,
+  golfEngine: GolfEngineScene,
+  golfFuel: GolfFuelScene,
+  golfCompare: GolfCompareScene,
+  golfSystems: GolfSystemsScene,
 };

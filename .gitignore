@@ -47,6 +47,7 @@ Thumbs.db
 references/manual/*.pdf
 references/manual/extracted/
 references/**/tmp/
+references/golf/images/
 assets/source/
 
 # Meshy/Blender working artifacts (kept locally, not versioned)

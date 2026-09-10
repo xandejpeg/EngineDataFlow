@@ -584,8 +584,61 @@ export const COURSE_LESSONS: Record<string, Lesson[]> = {
       ],
     },
     {
-      id: 'aula-4-sonda-lambda',
+      id: 'aula-5-motor-completo',
       numero: 5,
+      titlePt: 'Motor completo',
+      tag: 'motor',
+      summaryPt: 'A mecanica e os componentes trabalhando juntos: Golf V 2.0 FSI em corte, sincronismo 1-3-4-2, alimentacao em escala e os dois modos de injecao.',
+      pages: [
+        {
+          id: 'p1', titlePt: 'O conjunto completo', blocks: [
+            { kind: 'question', textPt: 'Onde cada sistema trabalha quando as pecas deixam o mapa e entram no carro?' },
+            { kind: 'text', textPt: 'O motor transversal fica na frente, mas o sistema de injecao ocupa o carro inteiro. Tanque, alimentacao, escape, sensores, central e painel trabalham juntos. Os 27 numeros da Aula 4 continuam sendo os grupos de referencia. O grupo 28 acrescenta a distribuicao eletrica por fusiveis e reles, com caixas separadas no cofre e no habitaculo.' },
+            { kind: 'scene', sceneId: 'golfVehicle', heightPx: 780, wide: true, interactive: true, captionPt: 'Golf V 2.0 FSI: motor, transmissao, combustivel, escape e eletrica em uma montagem didatica.' },
+            { kind: 'note', textPt: 'Referencia tecnica: Volkswagen SSP 322, motor AXW com MED 9.5.10. A pesquisa nao confirmou o BLX do briefing inicial. O AXW documentado tem bloco de aluminio e dois pre-catalisadores. Formas, coordenadas e calibracoes desta cena sao aproximacoes didaticas, nao cotas de oficina. O grupo MAF foi mantido como referencia conceitual da Aula 4, sem confirmacao de instalacao nesta variante.' },
+          ],
+        },
+        {
+          id: 'p2', titlePt: 'O motor sincronizado', blocks: [
+            { kind: 'question', textPt: 'Como a central sabe qual dos quatro cilindros esta pronto para queimar?' },
+            { kind: 'text', textPt: 'A referencia da Aula 3 continua: em zero graus, cilindros 1, 2, 3 e 4 em BALANCO, ESCAPE, ADMISSAO e CRUZAMENTO. Aqui o cabecote tem 16 valvulas. O virabrequim completa duas voltas enquanto os comandos completam uma.' },
+            { kind: 'scene', sceneId: 'golfEngine', heightPx: 780, wide: true, interactive: true, captionPt: 'Curso de 92,8 mm, quatro cilindros defasados, injetores laterais e bobinas individuais.' },
+            { kind: 'text', textPt: 'CKP informa posicao e rotacao; CMP identifica a fase do ciclo. O modelo usa uma roda 60-2 e um pulso CMP por ciclo como representacao didatica. A faisca acontece antes do PMS; o dwell e a carga da bobina antes do corte. A reproducao lenta preserva os angulos dos eventos e nao altera a rotacao fisica usada nos calculos.' },
+            { kind: 'note', textPt: 'Os angulos de valvulas, o pulso CMP e os avancos desta demonstracao sao ilustrativos. O pequeno cruzamento foi preservado para manter a leitura pedagogica da Aula 3; nao e um procedimento de sincronizacao do AXW.' },
+          ],
+        },
+        {
+          id: 'p3', titlePt: 'Do tanque ao injetor', blocks: [
+            { kind: 'question', textPt: 'Por que existem uma bomba no tanque e outra no cabecote?' },
+            { kind: 'text', textPt: 'A bomba do tanque transporta combustivel por aproximadamente 2,6 metros a cerca de 5 bar. A bomba mecanica eleva a pressao junto ao motor. A galeria, com cerca de 0,3 metro nesta montagem, distribui o combustivel aos quatro injetores.' },
+            { kind: 'scene', sceneId: 'golfFuel', heightPx: 780, wide: true, interactive: true, captionPt: 'Linha de baixa em escala de carro; circuito de alta concentrado no cabecote.' },
+            { kind: 'text', textPt: 'Na representacao adotada, tres golpes da bomba ocorrem durante quatro injecoes. A galeria amortece essa diferenca; G247 informa a pressao resultante. A duracao efetiva de cada pulso depende da rotacao e da quantidade pedida, e nao ocupa obrigatoriamente toda a janela disponivel.' },
+            { kind: 'formula', textPt: 'Duracao angular = tempo em ms x rpm x 0,006' },
+          ],
+        },
+        {
+          id: 'p4', titlePt: 'Homogeneo e estratificado', blocks: [
+            { kind: 'question', textPt: 'Como a mesma camara pode ter mistura uniforme ou uma nuvem rica perto da vela?' },
+            { kind: 'text', textPt: 'No homogeneo, a injecao acontece durante a admissao e ha tempo para misturar o combustivel com o ar. No estratificado, a injecao ocorre perto do fim da compressao: o movimento de tumble concentra a nuvem perto da vela, enquanto o restante da camara contem principalmente ar e gases recirculados.' },
+            { kind: 'scene', sceneId: 'golfCompare', heightPx: 780, wide: true, interactive: true, captionPt: 'Dois cortes do cilindro 1, alimentados pelo mesmo angulo de virabrequim.' },
+            { kind: 'text', textPt: 'A cavidade do pistao ajuda a orientar o fluxo de ar. O SSP 322 descreve o processo como guiado pelo ar: nao se deve ensinar que o jato precisa bater no pistao para ser levado ate a vela. As flaps restringem a parte inferior do duto para intensificar o tumble. A borboleta fica mais aberta e a dosagem de combustivel passa a ter papel principal no torque.' },
+            { kind: 'note', textPt: 'A nuvem e uma representacao qualitativa, nao uma simulacao CFD. Os desenhos de familia dos SSP 279 e 322 serviram de referencia visual, sem misturar as respectivas fichas tecnicas.' },
+          ],
+        },
+        {
+          id: 'p5', titlePt: 'O sistema trabalhando', blocks: [
+            { kind: 'question', textPt: 'O que muda da chave ligada ate a regeneracao do catalisador?' },
+            { kind: 'text', textPt: 'Na chave ligada, a bomba de baixa pressuriza mesmo sem o virabrequim girar. Durante a partida a tensao cai. Com o motor funcionando, sensores, atuadores e central trabalham em escalas diferentes: alguns seguem os dentes da roda fonica; temperatura e armazenamento de NOx evoluem ao longo do tempo.' },
+            { kind: 'scene', sceneId: 'golfSystems', heightPx: 780, wide: true, interactive: true, captionPt: 'Estados de operacao, scanner, aviso de falha e ocupacao do acumulador de NOx.' },
+            { kind: 'text', textPt: 'O AXW documentado tem dois ramos com pre-catalisadores, sondas de banda larga antes e sondas de banda estreita depois. Os ramos se unem no acumulador de NOx. G235 mede temperatura antes do acumulador; G295 mede depois dele. A regeneracao usa mistura rica durante um intervalo curto. A dessulfatacao e outro processo e nao esta sendo simulada aqui.' },
+            { kind: 'note', textPt: 'Os cenarios sao predefinidos, nao uma ECU completa. O relogio unico permite pausar mecanica, pressurizacao e aquecimento juntos. O seletor de angulo reposiciona apenas a mecanica; nao rebobina o historico termico ou o combustivel consumido.' },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'aula-4-sonda-lambda',
+      numero: 6,
       titlePt: 'Sonda lambda',
       tag: 'sensores',
       rascunho: true,

@@ -96,6 +96,14 @@ const RAILP_PATH: Vec3[] = [
   [-2.55, 3.3, 1.15],
   [-1.78, 3.3, 1.15],
 ];
+/** Da galeria para o bico injetor, que fica enfiado no cabecote. */
+const INJ_PATH: Vec3[] = [
+  [-1.313, 3.0, 1.15],
+  [-1.313, 2.35, 1.15],
+  [-1.313, 2.35, 0],
+  [-1.653, 2.35, 0],
+  [-1.653, 1.8, 0],
+];
 const EXH_PATH: Vec3[] = [
   [1.92, 0.66, 0],
   [5.6, 0.66, 0],
@@ -468,6 +476,7 @@ function Plumbing() {
       <Run points={FUEL_PATH} r={0.055} color="#8a6330" metalness={0.4} roughness={0.6} />
       <Run points={RAIL_PATH} r={0.055} color="#8a6330" metalness={0.4} roughness={0.6} />
       <Run points={RAILP_PATH} r={0.045} color="#8a6330" metalness={0.4} roughness={0.6} />
+      <Run points={INJ_PATH} r={0.045} color="#8a6330" metalness={0.4} roughness={0.6} />
       <Run points={EGR_IN_PATH} r={0.085} color="#6d5a4a" metalness={0.5} roughness={0.6} />
       <Run points={EGR_OUT_PATH} r={0.085} color="#6d5a4a" metalness={0.5} roughness={0.6} />
       <Run points={POWER_PATH} r={0.055} color="#b03030" metalness={0.2} roughness={0.7} />

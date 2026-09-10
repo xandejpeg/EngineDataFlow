@@ -5,6 +5,13 @@ Duas listas:
 1. **Mapa do sistema (Aula 4)** — os 27 numeros que aparecem no esquema 3D.
 2. **Catalogo completo de pecas 3D** — as 57 pecas registradas em `PART_MODELS`.
 
+> Qual motor de verdade tem esses 27 componentes juntos, qual peca real corresponde a
+> cada numero e os prompts de foto para remodelar: [MOTOR-REAL.md](MOTOR-REAL.md)
+>
+> Manual de montagem 3D do carro completo (coordenadas em mm, materiais, escape e
+> tanque em escala real, 3 modos de visualizacao):
+> [ASTRA-BUILD-GOLF-V-2.0-FSI.md](ASTRA-BUILD-GOLF-V-2.0-FSI.md)
+
 ---
 
 ## 1. Mapa do sistema Motronic (Aula 4) — 27 componentes

@@ -242,15 +242,15 @@ export const MOTRONIC_ITEMS: MapItem[] = [
   {
     numero: 15,
     partId: 'injector-gdi',
-    namePt: 'Valvula de injecao',
+    namePt: 'Valvula de injecao (bico injetor)',
     group: 'combustivel',
-    pos: [-1.2, 1.9, 1.15],
+    pos: [-1.36, 1.3, 0],
     scale: 0.51,
     badge: [0.9, 0],
     rot: [0, 0, 0.55],
     wired: true,
     descPt:
-      'Solenoide que a ECU abre por alguns milissegundos. Quem determina a quantidade de combustivel e o TEMPO que ela fica aberta, nao a pressao.',
+      'E a mesma peca que a oficina chama de bico injetor: "valvula de injecao" e o nome tecnico. Solenoide que a ECU abre por alguns milissegundos. Quem determina a quantidade de combustivel e o TEMPO que ela fica aberta, nao a pressao.',
     medePt:
       'Injetor indireto de alta impedancia: 12 a 16 ohm. De baixa impedancia: 1,5 a 4 ohm. Injetor de injecao direta: 1 a 3 ohm, com pico de 6 a 12 A e depois corrente de manutencao. Tempo de injecao na lenta: 2 a 4 ms.',
   },
@@ -286,7 +286,7 @@ export const MOTRONIC_ITEMS: MapItem[] = [
     namePt: 'Modulo de combustivel',
     group: 'combustivel',
     pos: [-2.8, -4.6, 0],
-    scale: 0.52,
+    scale: 0.25,
     wired: true,
     descPt:
       'Dentro do tanque: bomba, filtro, regulador de pressao e boia. Manda combustivel para a frente ja na pressao certa e informa o nivel ao painel.',
@@ -299,7 +299,7 @@ export const MOTRONIC_ITEMS: MapItem[] = [
     namePt: 'Bobina de ignicao',
     group: 'ignicao',
     pos: [0, 2.85, 0],
-    scale: 0.385,
+    scale: 0.355,
     badge: [0.55, -0.7],
     wired: true,
     descPt:

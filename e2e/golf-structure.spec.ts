@@ -1,0 +1,113 @@
+import { expect, test } from '@playwright/test';
+
+test('Aula 5: estrutura inteira, fixacoes e camadas independentes', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/courses/injecao-eletronica-40h/lessons/aula-5-motor-completo');
+  await expect(page.locator('.golf-identity')).toContainText('2WD / tracao dianteira');
+  await expect(page.locator('.golf-identity small')).toHaveAttribute('title', 'Referencia didatica do motor: AXW / SSP 322');
+  await page.locator('.golf-lab').scrollIntoViewIfNeeded();
+  await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
+  await expect(page.locator('.golf-lab')).toHaveAttribute('data-structure', 'true');
+  await expect(page.locator('.golf-lab')).toHaveAttribute('data-running', 'false');
+  await expect(page.getByRole('heading', { name: 'Estrutura do veiculo' })).toBeVisible();
+  await expect(page.getByLabel('Auditoria da estrutura')).toContainText('4 de 6 fixacoes');
+  await expect(page.getByLabel('Auditoria da estrutura')).toContainText('Nao corresponde ao conjunto 4Motion');
+  const canvas = page.locator('canvas[data-golf-canvas]');
+  await page.getByText('Motor e cambio / referencia', { exact: true }).click();
+  const powertrainReference = page.getByLabel('Referencia do conjunto motriz');
+  await expect(powertrainReference).toContainText('AXW / 2.0 FSI / 110 kW. Manual 02S, 6 marchas. Tracao dianteira.');
+  await expect(powertrainReference).toContainText('Codigo especifico do cambio, relacoes e aplicacao por ano ainda pendentes');
+  await expect(powertrainReference.getByRole('link', { name: 'Volkswagen SSP 318 / pp. 30, 31 e 37', exact: true })).toHaveAttribute('href', 'https://www.volkspage.net/technik/ssp/ssp/SSP_318_d1.pdf');
+  await expect(powertrainReference).toContainText('cilindro escravo externo (10), alavanca (7) e rolamento separado (8)');
+  await expect(powertrainReference).toContainText('dimensoes e posicao estimadas');
+  await expect(powertrainReference).toContainText('rolamento e luva-guia (4)');
+  await expect(powertrainReference).toContainText('Mola de retencao (5) representada como arame dobrado junto ao pivo');
+  await expect(powertrainReference).toContainText('sem elasticidade simulada');
+  await expect(powertrainReference).toContainText('Dois olhais e fixadores da guia (6) representados');
+  await expect(powertrainReference).toContainText('rosca e torque nao especificados');
+  await expect(powertrainReference).toContainText('altura 0 mm, profundidade 0 mm');
+  await expect(powertrainReference).toContainText('Alinhamento radial corrigido no modelo');
+  await expect(powertrainReference).toContainText('Distancia axial, perfil da campana e fixacoes ainda estimados');
+  await expect(powertrainReference).toContainText('nao representa transmissao funcional');
+  await expect(powertrainReference).toContainText('Eixo primario: apenas volume externo estimado, estatico');
+  await expect(powertrainReference).toContainText('quantidade de estrias e cotas pendentes');
+  await expect(powertrainReference).toContainText('Disco candidato SACHS 1864 001 694, integrante do kit 3000 970 036: 228 mm, 28 dentes, perfil do cubo 20,3x22,1-28N');
+  await expect(powertrainReference).toContainText('aplicacao no AXW/02S e volante correspondente ainda pendentes. Nao adotado na cena');
+  await expect(powertrainReference).toContainText('O perfil do cubo nao substitui o desenho cotado do eixo');
+  await expect(powertrainReference.getByRole('link', { name: 'ZF Aftermarket / disco 1864 001 694', exact: true })).toHaveAttribute('href', 'https://aftermarket.zf.com/de/catalog/products/1864%20001%20694/?country=DE');
+  await expect(powertrainReference.getByRole('link', { name: 'ZF Aftermarket / kit 3000 970 036', exact: true })).toHaveAttribute('href', 'https://aftermarket.zf.com/de/catalog/products/3000%20970%20036/?country=DE');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.getByText('Motor e cambio / referencia', { exact: true }).click();
+  await page.getByText('Assoalho dianteiro / cotas de conferencia', { exact: true }).click();
+  const repairDimensions = page.getByLabel('Cotas de reparacao dianteira');
+  await expect(repairDimensions).toContainText('1097 mm / N00-10159 / p. 28');
+  await expect(repairDimensions).toContainText('828 mm / N00-10086 / p. 29');
+  await expect(repairDimensions).toContainText('Sem cotas XYZ relativas ao eixo dianteiro e ao chao');
+  await expect(repairDimensions).toContainText('VAS 6240/2');
+  await expect(repairDimensions.getByRole('link')).toHaveAttribute('href', 'https://vwts.ru/vw/g5/vw_golf_5_2004_body_repairs_eng.pdf');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  await page.getByText('Assoalho dianteiro / cotas de conferencia', { exact: true }).click();
+  await page.getByText('Montagem dianteira / manual', { exact: true }).click();
+  await expect(page.getByLabel('Montagem dianteira documentada')).toContainText('perfil T/V nao confirmado');
+  await expect(page.getByLabel('Montagem dianteira documentada')).toContainText('primeiro cambio, depois agregado');
+  await expect(page.getByLabel('Montagem dianteira documentada')).toContainText('Consoles: 1 e 8. Agregado: 4 e 5. Suportes das buchas das bandejas: 9 e 18.');
+  await expect(page.getByLabel('Montagem dianteira documentada')).toContainText('correspondencia com o 3D e cotas XYZ pendentes');
+  await expect(page.getByLabel('Montagem dianteira documentada')).toContainText('Quatro pinos nas posicoes 1, 8, 9, 18');
+  await expect(page.getByRole('link', { name: 'Posicionamento / N40-10020', exact: true })).toHaveAttribute('href', /\/fixing_position_of_subframe_and_brackets\/$/);
+  await expect(page.getByRole('link', { name: 'Remocao / parafusos 4 e 5', exact: true })).toHaveAttribute('href', /\/removing_and_installing_subframe_with_steering_box\/$/);
+  const bushes = await canvas.evaluate(element => (element as HTMLCanvasElement & {
+    inspectPendulumBushes: () => { id: string; sourceItem: number; variant: string; dimensionalStatus: string; min: number[]; max: number[] }[];
+  }).inspectPendulumBushes());
+  expect(bushes.map(bush => bush.sourceItem)).toEqual([25, 29]);
+  expect(bushes.map(bush => bush.id)).toEqual(['lower', 'upper']);
+  expect(bushes[0].min[1]).toBeCloseTo(257);
+  expect(bushes[0].max[1]).toBeCloseTo(bushes[1].min[1]);
+  expect(bushes[1].max[1]).toBeCloseTo(297);
+  for (const bush of bushes) {
+    expect(bush.variant).toBe('unverified');
+    expect(bush.dimensionalStatus).toBe('estimated');
+    expect(bush.min[0]).toBeCloseTo(-47);
+    expect(bush.max[0]).toBeCloseTo(47);
+  }
+  await page.getByText('Montagem dianteira / manual', { exact: true }).click();
+  const inspect = () => canvas.evaluate(element => (element as HTMLCanvasElement & {
+    inspectStructure: () => { name: string; visible: boolean; mounts: { name: string; position: number[] }[]; projected: number[][] }[];
+  }).inspectStructure());
+  const groups = await inspect();
+  expect(groups.map(group => group.visible)).toEqual([true, true, true, true, true]);
+  expect(groups[0].mounts).toHaveLength(4);
+  expect(groups[1].mounts.map(mount => mount.position)).toEqual(groups[0].mounts.map(mount => mount.position));
+  expect(groups[2].mounts).toHaveLength(4);
+  expect(groups[4].mounts.map(mount => mount.position)).toEqual(groups[2].mounts.map(mount => mount.position));
+  for (const view of ['top', 'bottom', 'perspective']) {
+    await page.getByLabel('Vista da estrutura').selectOption(view);
+    expect(await canvas.evaluate(element => (element as HTMLCanvasElement & { inspectGolf: () => { contrastPixels: number } }).inspectGolf().contrastPixels)).toBeGreaterThan(100);
+    for (const group of await inspect()) for (const [axis, height, depth] of group.projected) {
+      expect(Math.abs(axis)).toBeLessThan(0.98);
+      expect(Math.abs(height)).toBeLessThan(0.98);
+      expect(depth).toBeGreaterThan(-1);
+      expect(depth).toBeLessThan(1);
+    }
+  }
+  await page.getByLabel('Monobloco dianteiro', { exact: true }).uncheck();
+  expect((await inspect()).map(group => group.visible)).toEqual([false, true, true, true, true]);
+  await page.getByLabel('Agregado dianteiro', { exact: true }).uncheck();
+  expect((await inspect()).map(group => group.visible)).toEqual([false, false, true, true, true]);
+  await page.getByLabel('Monobloco dianteiro', { exact: true }).check();
+  expect((await inspect()).map(group => group.visible)).toEqual([true, false, true, true, true]);
+  for (const label of ['Monobloco traseiro', 'Estrutura da cabine', 'Agregado traseiro']) await page.getByLabel(label, { exact: true }).uncheck();
+  expect((await inspect()).map(group => group.visible)).toEqual([true, false, false, false, false]);
+  for (const label of ['Monobloco traseiro', 'Estrutura da cabine', 'Agregado traseiro']) await page.getByLabel(label, { exact: true }).check();
+  expect((await inspect()).map(group => group.visible)).toEqual([true, false, true, true, true]);
+  await page.getByRole('button', { name: 'Corte', exact: true }).click();
+  await expect(page.locator('.golf-lab')).toHaveAttribute('data-structure', 'false');
+  await expect(page.getByLabel('Componente do motor').locator('option')).toHaveCount(29);
+  await page.getByRole('button', { name: 'Estrutura', exact: true }).click();
+  await page.getByRole('button', { name: 'Inspecao do cofre', exact: true }).click();
+  await expect(page.locator('.golf-lab')).toHaveAttribute('data-structure', 'false');
+  await expect(page.locator('.golf-lab')).toHaveAttribute('data-inspection', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  expect(errors).toEqual([]);
+});
