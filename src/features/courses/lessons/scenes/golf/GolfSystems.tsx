@@ -8,11 +8,16 @@ import { GolfFuseBoxes } from './GolfFuseBoxes';
 import { GolfTransmission } from './GolfTransmission';
 import { GolfAuxiliaries } from './GolfAuxiliaries';
 import { GolfEgasEcu, GolfEgasHarness } from './GolfEgasParts';
+import { GolfSensorHarness } from './GolfHarness';
+import { GolfFuelSenderHarness, GolfFuelTank } from './GolfFuelTank';
+import { allSystems, type SystemFlags } from './golfSystemToggles';
+import { GOLF_TIME } from './golfTimeline';
 
-interface Props { clock: MutableRefObject<GolfClock>; cutaway: boolean; scanner: boolean; fault: boolean; inspectFuses?: boolean }
+interface Props { clock: MutableRefObject<GolfClock>; cutaway: boolean; scanner: boolean; fault: boolean; inspectFuses?: boolean; show?: SystemFlags }
 
 function Flow({ clock, path, color, kind }: { clock: MutableRefObject<GolfClock>; path: Position[]; color: string; kind: 'fuel' | 'air' | 'exhaust' | 'can' }) {
   const points = useRef<THREE.Points>(null);
+  const phase = useRef(0);
   const curve = useMemo(() => new THREE.CatmullRomCurve3(path.map(point => new THREE.Vector3(...point))), [path]);
   const coordinates = useMemo(() => new Float32Array(32 * 3), []);
   const position = useMemo(() => new THREE.Vector3(), []);
@@ -21,8 +26,11 @@ function Flow({ clock, path, color, kind }: { clock: MutableRefObject<GolfClock>
     const sample = sampleGolf(state);
     if (!points.current) return;
     points.current.visible = kind === 'fuel' ? sample.pumpLow : kind === 'can' ? sample.powered : sample.rpm > 0;
+    // Na mangueira de combustivel a velocidade das particulas segue a vazao calculada pela ECU.
+    phase.current += kind === 'fuel' ? GOLF_TIME.delta * Math.max(0.03, sample.consumption.litresPerHour / 20) : 0;
+    const drift = kind === 'fuel' ? phase.current : state.angle / 7200 + state.elapsed * (kind === 'can' ? 1.4 : 0.14);
     for (let index = 0; index < 32; index++) {
-      const progress = (index / 32 + state.angle / 7200 + state.elapsed * (kind === 'can' ? 1.4 : 0.14)) % 1;
+      const progress = (index / 32 + drift) % 1;
       curve.getPoint(progress, position);
       coordinates.set([position.x, position.y, position.z], index * 3);
     }
@@ -59,28 +67,16 @@ function Catalyst({ position, radius, length, id, cutaway, clock }: {
 }
 
 function FuelSystem({ clock }: Pick<Props, 'clock'>) {
-  const level = useRef<THREE.Group>(null);
-  const rotor = useRef<THREE.Group>(null);
-  const float = useRef<THREE.Group>(null);
   const purge = useRef<THREE.MeshStandardMaterial>(null);
   const vapor = useRef<THREE.Mesh>(null);
   useFrame(() => {
     const sample = sampleGolf(clock.current);
-    if (level.current) { level.current.scale.y = clock.current.fuel; level.current.position.y = 325; }
-    if (rotor.current && sample.pumpLow) rotor.current.rotation.y = clock.current.elapsed * 40;
-    if (float.current) float.current.rotation.z = -0.8 + clock.current.fuel * 1.4;
     if (purge.current) purge.current.emissiveIntensity = sample.purge ? 1.2 : 0;
     if (vapor.current) vapor.current.scale.setScalar(sample.purge ? 0.45 + 0.15 * Math.sin(clock.current.elapsed * 5) : 0.75);
   });
   return <group name="golf-fuel-system">
-    {[-230, 230].map(axis => <Casting key={axis} position={[axis, 460, 2225]} size={[335, 315, 550]} radius={28} color="#374348" opacity={0.2} />)}
-    <Casting position={[0, 590, 2225]} size={[800, 58, 550]} radius={15} color="#374348" opacity={0.2} />
-    <group ref={level}>{[-230, 230].map(axis => <mesh key={axis} position={[axis, 130, 2225]}><boxGeometry args={[300, 260, 500]} /><meshStandardMaterial color="#c8ae52" transparent opacity={0.3} depthWrite={false} /></mesh>)}</group>
-    <group position={[-150, 470, 2150]} userData={{ golfPart: 18 }}>
-      <Turned profile={[[55, -110], [64, -108], [65, 90], [79, 94], [79, 102], [52, 102]]} color="#c6c8b5" opacity={0.45} />
-      <group ref={rotor}><Shaft from={[0, -55, 0]} to={[0, 55, 0]} radius={19} /><Casting position={[0, -30, 18]} size={[34, 15, 8]} color="#bf9569" /></group>
-      <group ref={float} position={[20, 20, 0]}><Shaft from={[0, 0, 0]} to={[120, 0, 0]} radius={2} /><Casting position={[120, 0, 0]} size={[40, 30, 35]} radius={8} color="#323b3c" /></group>
-    </group>
+    <GolfFuelTank clock={clock} />
+    <GolfFuelSenderHarness clock={clock} />
     <Tube points={FUEL_PATH} radius={4} color="#c2a94e" />
     <Flow clock={clock} path={FUEL_PATH} color="#ffe16f" kind="fuel" />
     <group position={[350, 400, 2600]} userData={{ golfPart: 1 }}>
@@ -149,7 +145,7 @@ function Electrical({ clock, scanner, fault }: Omit<Props, 'cutaway'>) {
   </group>;
 }
 
-function Accessories({ clock, cutaway }: Pick<Props, 'clock' | 'cutaway'>) {
+function Accessories({ clock, cutaway, show }: Pick<Props, 'clock' | 'cutaway'> & { show: SystemFlags }) {
   const alternator = useRef<THREE.Group>(null);
   const starter = useRef<THREE.Group>(null);
   useFrame(() => {
@@ -158,47 +154,58 @@ function Accessories({ clock, cutaway }: Pick<Props, 'clock' | 'cutaway'>) {
     if (starter.current) starter.current.position.x = clock.current.operation === 'starting' ? 20 : 0;
   });
   return <group>
-    <GolfAuxiliaries clock={clock} />
-    <group position={engineToWorld([-95, 40, 90])} rotation={[0, 0, Math.PI / 2]}>
-      <Turned profile={[[35, -80], [55, -74], [65, -45], [65, 45], [58, 67], [35, 80]]} />
-      <group ref={alternator}><Shaft from={[-85, 0, 0]} to={[85, 0, 0]} radius={17} color="#b68b58" /></group>
+    <group name="golf-system-cooling" visible={show.cooling}><GolfAuxiliaries clock={clock} /></group>
+    <group name="golf-system-starter" visible={show.starter}>
+      <group position={engineToWorld([-95, 40, 90])} rotation={[0, 0, Math.PI / 2]}>
+        <Turned profile={[[35, -80], [55, -74], [65, -45], [65, 45], [58, 67], [35, 80]]} />
+        <group ref={alternator}><Shaft from={[-85, 0, 0]} to={[85, 0, 0]} radius={17} color="#b68b58" /></group>
+      </group>
+      <group position={engineToWorld([340, -35, -120])}>
+        <Shaft from={[-85, 0, 0]} to={[85, 0, 0]} radius={47} color="#667377" />
+        <Shaft from={[-50, 58, 0]} to={[50, 58, 0]} radius={23} />
+        <group ref={starter}><Shaft from={[80, 0, 0]} to={[110, 0, 0]} radius={20} /></group>
+      </group>
     </group>
-    <GolfTransmission cutaway={cutaway} clock={clock} />
-    <group position={engineToWorld([340, -35, -120])}>
-      <Shaft from={[-85, 0, 0]} to={[85, 0, 0]} radius={47} color="#667377" />
-      <Shaft from={[-50, 58, 0]} to={[50, 58, 0]} radius={23} />
-      <group ref={starter}><Shaft from={[80, 0, 0]} to={[110, 0, 0]} radius={20} /></group>
-    </group>
+    <group name="golf-system-transmission" visible={show.transmission}><GolfTransmission cutaway={cutaway} clock={clock} /></group>
   </group>;
 }
 
-export function GolfSystems({ clock, cutaway, scanner, fault, inspectFuses }: Props) {
+const ALL_ON = allSystems(true);
+
+export function GolfSystems({ clock, cutaway, scanner, fault, inspectFuses, show = ALL_ON }: Props) {
   return <group name="golf-connected-systems">
-    <FuelSystem clock={clock} />
-    <Electrical clock={clock} scanner={scanner} fault={fault} />
-    <GolfFuseBoxes clock={clock} open={cutaway || Boolean(inspectFuses)} />
-    <Accessories clock={clock} cutaway={cutaway} />
-    <group userData={{ golfPart: 2 }} position={[-180, 700, -330]} rotation={[Math.PI / 2, 0, 0]}><Turned profile={[[36, -50], [41, -50], [41, 50], [36, 50], [36, -50]]} color="#374247" /><Casting position={[45, 0, 0]} size={[55, 50, 45]} color="#323d41" /><Connector pins={5} /></group>
-    <Casting position={[-300, 700, -460]} size={[280, 180, 230]} radius={20} color="#2f3a3d" />
-    <Tube points={AIR_PATH} radius={35} color="#344b50" opacity={0.35} /><Flow clock={clock} path={AIR_PATH} color="#65d8eb" kind="air" />
-    <group position={[-10, 550, 0]} userData={{ golfPart: 12 }}><Casting size={[80, 80, 85]} radius={10} /><group position={[0, 68, 0]}><Connector pins={4} /></group><Casting position={[-55, 70, 50]} size={[140, 85, 85]} radius={8} /></group>
-    <Tube points={[[80, 570, 160], [-60, 620, 90], [-10, 550, 0], [-80, 640, -200]]} radius={16} color="#9a9d95" />
-    {[0, 1, 2, 3].map(index => <Tube key={index} points={[engineToWorld([index * 88, 244, -50]), engineToWorld([index * 88, 230, -110]), [index < 2 ? 215 : 75, 610, 140], [index < 2 ? 215 : 75, 535, 160]]} radius={19} color="#8e7d72" />)}
-    {[75, 215].map(axis => <group key={axis}>
-      <group position={[axis, 460, 170]} rotation={[Math.PI / 2, 0, 0]}><Catalyst position={[0, 0, 0]} radius={55} length={140} id={23} clock={clock} cutaway={cutaway} /></group>
-      <Probe position={[axis, 595, 143]} id={22} />
-      <Probe position={[axis, 350, 225]} id={26} />
-      <Tube points={[[axis, 365, 175], [axis, 320, 220], [80, 300, 260]]} radius={27} color="#959d98" />
-    </group>)}
-    <Tube points={EXHAUST_PATH} radius={27.5} color="#939e9b" opacity={cutaway ? 0.5 : 1} />
-    <Flow clock={clock} path={EXHAUST_PATH} color="#dc9076" kind="exhaust" />
-    <Probe position={[-60, 210, 560]} id={24} long />
-    <Catalyst position={[-80, 180, 900]} radius={72.5} length={400} id={25} clock={clock} cutaway={cutaway} />
-    <Probe position={[-80, 205, 1180]} id={25} long />
-    <Casting position={[-80, 320, 1150]} size={[120, 30, 90]} />
-    <Casting position={[-100, 200, 2075]} size={[180, 180, 350]} radius={38} />
-    <Casting position={[-180, 280, 3000]} size={[550, 170, 350]} radius={40} />
-    {[-350, -250].map(axis => <Tube key={axis} points={[[-180, 280, 3150], [axis, 300, 3210], [axis, 300, 3330]]} radius={35} color="#b7c4c0" />)}
-    {[900, 1500, 2100, 2500, 2900, 3250].map(depth => <Ring key={depth} position={[-80, 240, depth]} radius={20} tube={5} color="#3d4544" rotation={[0, 0, 0]} />)}
+    <group name="golf-system-fuel" visible={show.fuel}><FuelSystem clock={clock} /></group>
+    <group name="golf-system-electrical" visible={show.electrical}>
+      <Electrical clock={clock} scanner={scanner} fault={fault} />
+      <GolfFuseBoxes clock={clock} open={cutaway || Boolean(inspectFuses)} />
+    </group>
+    <group name="golf-system-harness" visible={show.harness}><GolfSensorHarness /></group>
+    <Accessories clock={clock} cutaway={cutaway} show={show} />
+    <group name="golf-system-intake" visible={show.intake}>
+      <group userData={{ golfPart: 2 }} position={[-180, 700, -330]} rotation={[Math.PI / 2, 0, 0]}><Turned profile={[[36, -50], [41, -50], [41, 50], [36, 50], [36, -50]]} color="#374247" /><Casting position={[45, 0, 0]} size={[55, 50, 45]} color="#323d41" /><Connector pins={5} /></group>
+      <Casting position={[-300, 700, -460]} size={[280, 180, 230]} radius={20} color="#2f3a3d" />
+      <Tube points={AIR_PATH} radius={35} color="#344b50" opacity={0.35} /><Flow clock={clock} path={AIR_PATH} color="#65d8eb" kind="air" />
+      <group position={[-10, 550, 0]} userData={{ golfPart: 12 }}><Casting size={[80, 80, 85]} radius={10} /><group position={[0, 68, 0]}><Connector pins={4} /></group><Casting position={[-55, 70, 50]} size={[140, 85, 85]} radius={8} /></group>
+      <Tube points={[[80, 570, 160], [-60, 620, 90], [-10, 550, 0], [-80, 640, -200]]} radius={16} color="#9a9d95" />
+    </group>
+    <group name="golf-system-exhaust" visible={show.exhaust}>
+      {[0, 1, 2, 3].map(index => <Tube key={index} points={[engineToWorld([index * 88, 244, -50]), engineToWorld([index * 88, 230, -110]), [index < 2 ? 215 : 75, 610, 140], [index < 2 ? 215 : 75, 535, 160]]} radius={19} color="#8e7d72" />)}
+      {[75, 215].map(axis => <group key={axis}>
+        <group position={[axis, 460, 170]} rotation={[Math.PI / 2, 0, 0]}><Catalyst position={[0, 0, 0]} radius={55} length={140} id={23} clock={clock} cutaway={cutaway} /></group>
+        <Probe position={[axis, 595, 143]} id={22} />
+        <Probe position={[axis, 350, 225]} id={26} />
+        <Tube points={[[axis, 365, 175], [axis, 320, 220], [80, 300, 260]]} radius={27} color="#959d98" />
+      </group>)}
+      <Tube points={EXHAUST_PATH} radius={27.5} color="#939e9b" opacity={cutaway ? 0.5 : 1} />
+      <Flow clock={clock} path={EXHAUST_PATH} color="#dc9076" kind="exhaust" />
+      <Probe position={[-60, 210, 560]} id={24} long />
+      <Catalyst position={[-80, 180, 900]} radius={72.5} length={400} id={25} clock={clock} cutaway={cutaway} />
+      <Probe position={[-80, 205, 1180]} id={25} long />
+      <Casting position={[-80, 320, 1150]} size={[120, 30, 90]} />
+      <Casting position={[-100, 200, 2075]} size={[180, 180, 350]} radius={38} />
+      <Casting position={[-180, 280, 3000]} size={[550, 170, 350]} radius={40} />
+      {[-350, -250].map(axis => <Tube key={axis} points={[[-180, 280, 3150], [axis, 300, 3210], [axis, 300, 3330]]} radius={35} color="#b7c4c0" />)}
+      {[900, 1500, 2100, 2500, 2900, 3250].map(depth => <Ring key={depth} position={[-80, 240, depth]} radius={20} tube={5} color="#3d4544" rotation={[0, 0, 0]} />)}
+    </group>
   </group>;
 }

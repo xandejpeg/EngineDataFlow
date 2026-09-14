@@ -37,11 +37,13 @@ test('Freios hidraulicos: pedal circuito pinca e parada da bancada', async ({ pa
   await lab.screenshot({ path: testInfo.outputPath('hydraulic-circuit.png') });
 
   await page.getByRole('combobox', { name: 'Vista dos freios', exact: true }).selectOption('pedal');
-  await lab.evaluate(element => element.scrollIntoView({ block: 'start' }));
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
   await expect.poll(async () => (await inspect()).projected.every(point => point.every(coordinate => Math.abs(coordinate) < 1))).toBe(true);
   const pedalPoint = (await inspect()).pedalPoint;
   const bounds = (await canvas.boundingBox())!;
-  await page.mouse.click(bounds.x + (pedalPoint[0] + 1) * bounds.width / 2, bounds.y + (1 - pedalPoint[1]) * bounds.height / 2);
+  const clickPoint = { x: bounds.x + (pedalPoint[0] + 1) * bounds.width / 2, y: bounds.y + (1 - pedalPoint[1]) * bounds.height / 2 };
+  expect(await canvas.evaluate((element, point) => document.elementFromPoint(point.x, point.y) === element, clickPoint)).toBe(true);
+  await page.mouse.click(clickPoint.x, clickPoint.y);
   await expect.poll(async () => (await inspect()).pedal).toBe(0.7);
   await expect.poll(async () => (await inspect()).primaryBar).toBeGreaterThan(100);
   const applied = await inspect();
@@ -66,6 +68,7 @@ test('Freios hidraulicos: pedal circuito pinca e parada da bancada', async ({ pa
   await pedal.focus();
   await pedal.press('Home');
   await expect.poll(async () => (await inspect()).primaryBar).toBe(0);
+  await expect.poll(async () => (await inspect()).secondaryBar).toBe(0);
   await page.getByRole('button', { name: 'Pausar motor', exact: true }).click();
   await expect(lab).toHaveAttribute('data-running', 'false');
   await page.getByRole('button', { name: 'Lancar a 30 km/h', exact: true }).click();

@@ -7,6 +7,10 @@ import { GolfBrakeControls } from './GolfBrakeControls';
 import type { BrakeState } from './golfBrakeHydraulics';
 import type { GolfClock } from './golfPhysics';
 import { GolfAcceleratorPedal } from './GolfEgasParts';
+import { GolfSteeringWheel } from './GolfSteeringWheel';
+import { allSystems, type SystemFlags } from './golfSystemToggles';
+
+const ALL_ON = allSystems(true);
 
 function Spring({ from, to, radius }: { from: StructurePoint; to: StructurePoint; radius: number }) {
   const curve = useMemo(() => new THREE.CatmullRomCurve3(coilPoints(from, to, radius).map(point => new THREE.Vector3(...point))), [from, to, radius]);
@@ -29,8 +33,9 @@ function CvBoot({ from, to }: { from: StructurePoint; to: StructurePoint }) {
   </group>;
 }
 
-export function GolfChassis({ brakes, clock }: { brakes: MutableRefObject<BrakeState>; clock: MutableRefObject<GolfClock> }) {
+export function GolfChassis({ brakes, clock, show = ALL_ON }: { brakes: MutableRefObject<BrakeState>; clock: MutableRefObject<GolfClock>; show?: SystemFlags }) {
   return <group name="golf-chassis" userData={CHASSIS_REFERENCE}>
+    <group name="golf-system-suspension" visible={show.suspension}>
     {CHASSIS_CORNERS.map(corner => {
       const { side, knuckle, hub, damperTop, springTop } = corner;
       const front = corner.axle === 'front';
@@ -77,7 +82,8 @@ export function GolfChassis({ brakes, clock }: { brakes: MutableRefObject<BrakeS
         <Casting position={[side * 330, 365, 2810]} size={[40, 40, 40]} radius={6} color="#1e2b30" />
       </group>)}
     </group>
-    <group name="golf-steering" userData={{ actuation: 'not-simulated', type: 'electromechanical-dual-pinion' }}>
+    </group>
+    <group name="golf-steering" visible={show.steering} userData={{ actuation: 'not-simulated', type: 'electromechanical-dual-pinion' }}>
       <Shaft from={[-440, 360, 235]} to={[440, 360, 235]} radius={30} color="#a7b3b4" />
       <Shaft from={[-140, 410, 255]} to={[140, 410, 255]} radius={53} color="#67797d" />
       <Casting position={[20, 465, 265]} size={[170, 45, 95]} radius={7} color="#293c43" />
@@ -90,17 +96,12 @@ export function GolfChassis({ brakes, clock }: { brakes: MutableRefObject<BrakeS
       <Joint position={[-380, 580, 460]} radius={22} />
       <Shaft from={[-380, 580, 460]} to={[-390, 890, 910]} radius={17} />
       <Shaft from={[-390, 760, 720]} to={[-390, 890, 910]} radius={37} color="#26383e" />
-      <group name="golf-steering-wheel" position={[-390, 915, 965]} rotation={[-0.35, 0, 0]}>
-        <Ring radius={167} tube={17} rotation={[0, 0, 0]} color="#243238" />
-        <Casting size={[130, 85, 50]} radius={17} color="#2f4046" />
-        {[[-155, 5, 0], [155, 5, 0], [0, -153, 0]].map((point, index) => <Shaft key={index} from={[0, 0, 0]} to={point as StructurePoint} radius={15} color="#77878b" />)}
-      </group>
+      <GolfSteeringWheel />
       <Shaft from={[-460, 860, 880]} to={[-580, 885, 920]} radius={9} color="#243238" />
-      <Shaft from={[-320, 860, 880]} to={[-245, 885, 920]} radius={9} color="#243238" />
     </group>
-    <GolfBrakeControls brakes={brakes} />
-    <GolfAcceleratorPedal clock={clock} />
-    <group name="golf-underbody-details">
+    <group name="golf-system-brake-control" visible={show.brakes}><GolfBrakeControls brakes={brakes} /></group>
+    <group name="golf-system-accelerator-pedal" visible={show.egas}><GolfAcceleratorPedal clock={clock} /></group>
+    <group name="golf-underbody-details" visible={show.bodywork}>
       <Casting position={[0, 345, 1430]} size={[280, 6, 1300]} color="#b8beb3" radius={2} />
       <Casting position={[0, 540, 2900]} size={[750, 6, 430]} color="#b8beb3" radius={2} />
       <Tube points={[[770, 895, 2850], [670, 770, 2830], [630, 560, 2660], [510, 430, 2210]]} radius={25} color="#2b3c40" />

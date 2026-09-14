@@ -3,19 +3,26 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Casting, Connector, Ring, Shaft, Tube } from './GolfPrimitives';
 import { COOLING_PORTS, COOLING_ROUTES, coolingRoutePoints } from './golfCoolingGeometry';
-import { engineToWorld, type GolfClock } from './golfPhysics';
+import { coolingSample, type GolfClock } from './golfPhysics';
+import { COOLING_MODEL } from './golfCooling';
+import { GolfCoolingFlow } from './GolfCoolingFlow';
+import { GolfWasherAssembly } from './GolfWasherAssembly';
 
 const ESTIMATED = { dimensionalStatus: 'estimated', applicationStatus: 'generic-not-oe-selected', fluidSimulation: false };
 
-export function GolfAuxiliaries({ clock }: { clock: MutableRefObject<GolfClock> }) {
+export function GolfAuxiliaries({ clock, coolingOnly = false }: { clock: MutableRefObject<GolfClock>; coolingOnly?: boolean }) {
   const fan = useRef<THREE.Group>(null);
+  const thermostat = useRef<THREE.Group>(null);
+  const pump = useRef<THREE.Group>(null);
   useFrame(() => {
-    if (fan.current) fan.current.rotation.z = clock.current.temperature > 85 ? clock.current.elapsed * 16 : 0;
+    if (fan.current) fan.current.rotation.z = clock.current.cooling.fanAngle;
+    if (thermostat.current) thermostat.current.position.y = coolingSample(clock.current).thermostat * 18;
+    if (pump.current) pump.current.rotation.x = clock.current.cooling.flowLitres * 2;
   });
   return <group name="golf-auxiliaries" userData={ESTIMATED}>
-    <group name="golf-cooling-system" userData={ESTIMATED}>
+    <group name="golf-cooling-system" userData={{ ...ESTIMATED, fluidSimulation: 'lumped-thermal', ...COOLING_MODEL }}>
       <group name="golf-radiator">
-        <Casting position={[0, 540, -780]} size={[650, 410, 26]} color="#546e76" />
+        <Casting position={[0, 540, -780]} size={[650, 410, 26]} color="#546e76" opacity={coolingOnly ? 0.2 : 1} />
         {Array.from({ length: 26 }, (_, index) => <Casting key={index} position={[0, 345 + index * 15, -796]} size={[620, 3, 8]} color="#a1b1af" radius={0.8} />)}
         {[-1, 1].map(side => <group key={side}>
           <Casting position={[side * 332, 540, -780]} size={[35, 440, 45]} color="#273b42" radius={8} />
@@ -39,24 +46,28 @@ export function GolfAuxiliaries({ clock }: { clock: MutableRefObject<GolfClock> 
         <group position={[50, -48, 0]}><Connector pins={2} /></group>
       </group>
       <group name="golf-thermostat" position={COOLING_PORTS.thermostat}>
-        <Casting size={[75, 65, 70]} radius={12} color="#4b626c" />
-        <Shaft from={[-40, 0, 0]} to={[40, 0, 0]} radius={23} />
+        <Casting size={[75, 65, 70]} radius={12} color="#4b626c" opacity={coolingOnly ? 0.2 : 1} />
+        <group ref={thermostat} name="golf-thermostat-valve"><Shaft from={[0, -6, 0]} to={[0, 6, 0]} radius={22} color="#c5a55a" /></group>
+        <group visible={!coolingOnly}><Shaft from={[-40, 0, 0]} to={[40, 0, 0]} radius={23} /></group>
         <group position={[0, 42, 0]}><Connector pins={4} /></group>
       </group>
       <group name="golf-coolant-head-flange" position={COOLING_PORTS.headOutlet}>
         <Casting size={[75, 42, 38]} radius={6} color="#354e59" />
         <Shaft from={[-40, 0, 0]} to={[40, 0, 0]} radius={17} />
       </group>
-      {COOLING_ROUTES.map(route => <group key={route.id} name={`golf-coolant-${route.id}`}>
-        <Tube points={coolingRoutePoints(route)} radius={route.radius} color="#293e47" />
+      {COOLING_ROUTES.map(route => <group key={route.id} name={`golf-coolant-${route.id}`} visible={coolingOnly || !['water-jacket', 'radiator-core', 'heater-core'].includes(route.id)} userData={{ representation: ['water-jacket', 'radiator-core', 'heater-core'].includes(route.id) ? 'schematic-internal-path' : 'estimated-hose' }}>
+        <Tube points={coolingRoutePoints(route)} radius={route.radius} color={['water-jacket', 'radiator-core', 'heater-core'].includes(route.id) ? '#ac8750' : '#293e47'} />
         {[COOLING_PORTS[route.from], COOLING_PORTS[route.to]].map((position, index) => <mesh key={index} position={position}><sphereGeometry args={[route.radius + 2, 12, 8]} /><meshStandardMaterial color="#a2b4b3" metalness={0.75} roughness={0.4} /></mesh>)}
       </group>)}
-      <group name="golf-water-pump" position={engineToWorld([-65, 105, 15])}>
-        <Shaft from={[-20, 0, 0]} to={[35, 0, 0]} radius={42} color="#82999f" />
+      <group name="golf-water-pump" position={COOLING_PORTS.pumpInlet}>
+        <group visible={!coolingOnly}><Shaft from={[-20, 0, 0]} to={[35, 0, 0]} radius={42} color="#82999f" /></group>
+        <group ref={pump} name="golf-water-pump-impeller">{Array.from({ length: 6 }, (_, index) => <group key={index} rotation={[index * Math.PI / 3, 0, 0]}><Casting position={[15, 22, 0]} size={[12, 36, 7]} radius={2} color="#8da8b0" /></group>)}</group>
         <Shaft from={[-30, 0, 0]} to={[-20, 0, 0]} radius={48} color="#344b57" />
         {[-25, 25].map(height => <Shaft key={height} from={[34, height, 20]} to={[40, height, 20]} radius={5} />)}
       </group>
+      {coolingOnly && <><GolfCoolingFlow clock={clock} /><Casting position={[0, 670, 470]} size={[145, 90, 45]} color="#9bada8" opacity={0.2} /></>}
     </group>
+    <group visible={!coolingOnly}>
     <group name="golf-climate-system" userData={{ ...ESTIMATED, actuation: 'not-simulated' }}>
       <group name="golf-condenser">
         <Casting position={[0, 535, -818]} size={[600, 360, 14]} color="#647a80" />
@@ -93,12 +104,7 @@ export function GolfAuxiliaries({ clock }: { clock: MutableRefObject<GolfClock> 
       <Shaft from={[0, 275, 295]} to={[-230, 300, 130]} radius={24} color="#81989e" />
       <Ring position={[-230, 300, 130]} radius={30} tube={10} color="#283d45" />
     </group>
-    <group name="golf-washer-system" userData={ESTIMATED}>
-      <Casting position={[600, 510, -475]} size={[150, 230, 170]} radius={24} color="#bbcfc8" opacity={0.7} />
-      <Tube points={[[600, 610, -475], [610, 735, -410], [610, 810, -370]]} radius={24} color="#baccc7" />
-      <Shaft from={[610, 805, -370]} to={[610, 821, -370]} radius={34} color="#28789a" />
-      <Shaft from={[525, 435, -470]} to={[525, 490, -470]} radius={17} color="#283c46" />
-      <Tube points={[[525, 475, -470], [560, 800, -330], [560, 940, 400], [0, 960, 460]]} radius={3} color="#293e47" />
+    <GolfWasherAssembly />
     </group>
   </group>;
 }

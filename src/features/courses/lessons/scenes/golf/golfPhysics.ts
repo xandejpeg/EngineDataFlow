@@ -1,5 +1,9 @@
 import { electricalSupply, type FuseCircuit } from './golfElectrical';
 import { initialEgas, type EgasState } from './golfEgas';
+import { advanceCooling, initialCooling, sampleCooling, type CoolingState } from './golfCooling';
+import { initialWipers, type WiperState } from './golfWipers';
+import { initialFuelSender, type FuelSenderState } from './golfFuelSender';
+import { fuelConsumption } from './golfFuelConsumption';
 
 export type InjectionMode = 'homogeneous' | 'stratified';
 export type OperatingState = 'off' | 'key' | 'starting' | 'idle' | 'cruise' | 'acceleration' | 'regeneration' | 'overrun';
@@ -85,6 +89,9 @@ export function crossings(before: number, after: number, event: number, period: 
 }
 
 export interface GolfClock {
+  readonly fuelSender: FuelSenderState;
+  readonly wipers: WiperState;
+  readonly cooling: CoolingState;
   readonly egas: EgasState;
   readonly angle: number;
   readonly elapsed: number;
@@ -94,37 +101,64 @@ export interface GolfClock {
   readonly fuel: number;
   readonly operation: OperatingState;
   readonly openFuse: FuseCircuit | null;
+  /** Circuitos que o aluno desligou no painel de sistemas, somados ao fusivel aberto. */
+  readonly powerOff: readonly FuseCircuit[];
+}
+
+export function openCircuits(clock: GolfClock): readonly FuseCircuit[] {
+  return clock.openFuse ? [clock.openFuse, ...clock.powerOff] : clock.powerOff;
+}
+
+export function circuitOpen(clock: GolfClock, circuit: FuseCircuit): boolean {
+  return clock.openFuse === circuit || clock.powerOff.includes(circuit);
 }
 
 export function initialClock(operation: OperatingState = 'idle'): GolfClock {
   const warm = !['off', 'key', 'starting'].includes(operation);
-  return { egas: initialEgas(), angle: 0, elapsed: 0, temperature: warm ? 90 : 20, catalystTemperature: warm ? 400 : 20, nox: 0.45, fuel: 0.7, operation, openFuse: null };
+  return { fuelSender: initialFuelSender(), wipers: initialWipers(), cooling: initialCooling(warm), egas: initialEgas(), angle: 0, elapsed: 0, temperature: warm ? 90 : 20, catalystTemperature: warm ? 400 : 20, nox: 0.45, fuel: 0.7, operation, openFuse: null, powerOff: [] };
 }
 
-export function advanceClock(clock: GolfClock, seconds: number): GolfClock {
+export function fuelSenderSupply(clock: GolfClock) {
+  return clock.operation !== 'off' && !circuitOpen(clock, 'main') && !circuitOpen(clock, 'instrument');
+}
+
+export function wiperSupply(clock: GolfClock) {
+  return clock.operation !== 'off' && !circuitOpen(clock, 'main');
+}
+
+export function advanceCoolingClock(clock: GolfClock, seconds: number): GolfClock {
+  const sample = sampleGolf(clock);
+  const result = advanceCooling(clock.cooling, { temperature: clock.temperature, rpm: sample.rpm, running: sample.running && OPERATING[clock.operation].pulseMs > 0, powered: sample.electrical.ecu && sample.electrical.fan, load: sample.throttle }, seconds);
+  return { ...clock, ...result };
+}
+
+export function coolingSample(clock: GolfClock) {
+  const sample = sampleGolf(clock);
+  return sampleCooling(clock.cooling, { temperature: clock.temperature, rpm: sample.rpm, running: sample.running && OPERATING[clock.operation].pulseMs > 0, powered: sample.electrical.ecu && sample.electrical.fan, load: sample.throttle });
+}
+
+export function advanceClock(clock: GolfClock, seconds: number, thermalSeconds = seconds): GolfClock {
   const delta = Math.max(0, seconds);
   if (clock.operation === 'regeneration' && sampleGolf(clock).running && clock.elapsed + delta >= 3) {
     const first = Math.max(0, 3 - clock.elapsed);
     const rich = integrate(clock, first);
-    return integrate({ ...rich, elapsed: 0, operation: 'cruise' }, delta - first);
+    return advanceCoolingClock(integrate({ ...rich, elapsed: 0, operation: 'cruise' }, delta - first), thermalSeconds);
   }
-  return integrate(clock, delta);
+  return advanceCoolingClock(integrate(clock, delta), thermalSeconds);
 }
 
 function integrate(clock: GolfClock, delta: number): GolfClock {
   const config = OPERATING[clock.operation];
-  const { rpm, running } = sampleGolf(clock);
+  const { rpm, running, consumption } = sampleGolf(clock);
   const angleDelta = clock.operation === 'overrun' && rpm > 0
     ? overrunIntegral(clock.elapsed + delta) - overrunIntegral(clock.elapsed)
     : 6 * rpm * delta;
-  const targetTemperature = running ? 90 : 20;
   const targetCatalyst = running ? (clock.operation === 'regeneration' ? 650 : 450) : 20;
   return {
     ...clock, angle: clock.angle + angleDelta, elapsed: clock.elapsed + delta,
-    temperature: targetTemperature + (clock.temperature - targetTemperature) * Math.exp(-delta / 100),
     catalystTemperature: targetCatalyst + (clock.catalystTemperature - targetCatalyst) * Math.exp(-delta / 35),
     nox: clamp(clock.nox + (running ? delta * (clock.operation === 'regeneration' ? -1 / 3 : config.mode === 'stratified' ? 1 / 60 : 0) : 0), 0, 1),
-    fuel: Math.max(0, clock.fuel - (running && config.pulseMs > 0 ? delta * rpm * 0.000000015 : 0)),
+    fuel: Math.max(0, clock.fuel - consumption.tankFractionPerSecond * delta),
   };
 }
 
@@ -150,8 +184,9 @@ function computeSample(clock: GolfClock, overrideMode?: InjectionMode) {
   const config = OPERATING[clock.operation];
   const requestedRpm = clock.operation === 'overrun' ? Math.max(780, config.rpm - clock.elapsed * 150) : config.rpm;
   const powered = clock.operation !== 'off';
-  const electrical = electricalSupply(powered, requestedRpm > 0 || (clock.operation === 'key' && clock.elapsed < 2), clock.openFuse);
-  const available = electrical.ecu && electrical.ignition && clock.openFuse !== 'pump';
+  const electrical = electricalSupply(powered, requestedRpm > 0 || (clock.operation === 'key' && clock.elapsed < 2), openCircuits(clock));
+  const dryTank = clock.fuel <= 0;
+  const available = electrical.ecu && electrical.ignition && !circuitOpen(clock, 'pump') && !dryTank;
   const rpm = available || clock.operation === 'starting' || clock.operation === 'overrun' ? requestedRpm : 0;
   const running = available && rpm > 0;
   const theta = wrap(clock.angle);
@@ -165,12 +200,14 @@ function computeSample(clock: GolfClock, overrideMode?: InjectionMode) {
   const intakeDemand = cylinders.reduce((sum, cylinder) => sum + cylinder.intake / 10, 0);
   const throttle = manualEgas ? clock.egas.opening : mode === 'stratified' ? 0.85 : overrideMode ? 0.3 : config.throttle;
   const lambda = overrideMode ? (mode === 'stratified' ? 2.5 : 1) : manualEgas && config.pulseMs > 0 ? 1 : config.lambda;
+  const map = rpm ? Math.max(20, (mode === 'stratified' ? 94 : 28 + throttle * 65) - intakeDemand * 3) : 101;
+  const pedal = manualEgas ? clock.egas.pedal : config.throttle;
+  const consumption = fuelConsumption({ rpm, throttle, mapKpa: map, lambda, injecting: running && config.pulseMs > 0 });
   return {
-    theta, rpm, mode, camAdvance, cylinders, powered, electrical, running, pumpLow, pumpLift, throttle, lambda,
+    theta, rpm, mode, camAdvance, cylinders, powered, electrical, running, pumpLow, pumpLift, throttle, lambda, map, pedal, consumption, dryTank,
     volts: !powered || rpm === 0 ? 12.6 : clock.operation === 'starting' ? 9.5 : 14.2,
-    lowPressure: pumpLow ? 5 : electrical.ecu && clock.openFuse !== 'pump' && clock.operation === 'key' ? 5 * Math.exp(-(clock.elapsed - 2) / 30) : 0,
+    lowPressure: pumpLow ? 5 : electrical.ecu && !circuitOpen(clock, 'pump') && clock.operation === 'key' ? 5 * Math.exp(-(clock.elapsed - 2) / 30) : 0,
     railPressure: rpm && pumpLow ? clamp(config.rail + 3 * (pumpLift - 0.5) - cylinders.filter(cylinder => cylinder.injecting).length * 2, 30, 110) : 0,
-    map: rpm ? Math.max(20, (mode === 'stratified' ? 94 : 28 + throttle * 65) - intakeDemand * 3) : 101,
     ckp: rpm > 0 && Math.floor(wrap(theta, 360) / 6) < 58 && wrap(theta, 6) < 3,
     cmp: rpm > 0 && wrap(theta + camAdvance) < 30,
     egr: clock.operation === 'cruise' ? 0.35 : 0,

@@ -1,0 +1,80 @@
+import { expect, test } from '@playwright/test';
+
+interface CockpitInspection {
+  source: { powered: boolean; rpm: number; temperature: number | null; rpmAngle: number; temperatureAngle: number };
+  rendered: { rpm: number; powered: boolean };
+  needleAngles: number[];
+  camera: number[];
+  fov: number;
+  steeringProjected: number[][];
+  objects: { name: string; present: boolean; projected: number[] }[];
+}
+
+test('Interior preserves shared instruments and returns to the exterior', async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/courses/injecao-eletronica-40h/lessons/aula-5-motor-completo');
+  const canvas = page.locator('canvas[data-golf-canvas]');
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'Pausar motor', exact: true }).click();
+  const view = page.getByRole('combobox', { name: 'Vista externa', exact: true });
+  await view.selectOption('interior');
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  const inspect = () => canvas.evaluate(element => (element as HTMLCanvasElement & { inspectCockpit: () => CockpitInspection }).inspectCockpit());
+  const pixels = () => canvas.evaluate(element => (element as HTMLCanvasElement & { inspectGolf: (pixels: boolean) => { contrastPixels: number; angle: number } }).inspectGolf(true));
+  await expect.poll(async () => (await inspect()).fov).toBeGreaterThanOrEqual(72);
+  const initial = await inspect();
+  expect(initial.fov).toBeLessThan(130);
+  expect(initial.steeringProjected).toHaveLength(8);
+  for (const corner of initial.steeringProjected) for (const value of corner) expect(Math.abs(value)).toBeLessThan(1);
+  expect(initial.objects.every(object => object.present)).toBe(true);
+  for (const object of initial.objects) expect(object.projected.every(value => Math.abs(value) < 1)).toBe(true);
+  expect((await pixels()).contrastPixels).toBeGreaterThan(1000);
+  const engineAngle = (await pixels()).angle;
+  const operation = page.getByRole('combobox', { name: 'Estado de operacao', exact: true });
+  await operation.selectOption('acceleration');
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await expect.poll(async () => (await inspect()).rendered.rpm).toBe(4000);
+  expect((await inspect()).needleAngles[0]).toBeCloseTo(0, 5);
+  expect((await inspect()).needleAngles[1]).toBeCloseTo((await inspect()).source.temperatureAngle, 5);
+  await canvas.screenshot({ path: testInfo.outputPath('cockpit-powered.png') });
+  await operation.selectOption('off');
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await expect.poll(async () => (await inspect()).rendered.powered).toBe(false);
+  for (const angle of (await inspect()).needleAngles) expect(angle).toBeCloseTo(Math.PI * 2 / 3, 5);
+  expect((await inspect()).source.temperature).toBeNull();
+  await canvas.screenshot({ path: testInfo.outputPath('cockpit-key-off.png') });
+  await operation.selectOption('idle');
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await expect.poll(async () => (await inspect()).rendered.rpm).toBe(780);
+  const bounds = (await canvas.boundingBox())!;
+  await page.mouse.move(bounds.x + bounds.width * 0.77, bounds.y + bounds.height * 0.55);
+  await page.mouse.down();
+  await page.mouse.move(bounds.x + bounds.width * 0.82, bounds.y + bounds.height * 0.58, { steps: 8 });
+  await page.mouse.up();
+  await expect.poll(async () => (await inspect()).camera).not.toEqual(initial.camera);
+  await page.getByRole('button', { name: 'Restaurar enquadramento', exact: true }).click();
+  await expect.poll(async () => (await inspect()).camera).toEqual(initial.camera);
+  for (const name of ['Combustivel', 'Limpadores']) {
+    await page.getByRole('button', { name, exact: true }).click();
+    await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+    await expect.poll(async () => (await inspect()).fov).toBe(42);
+    expect((await pixels()).contrastPixels).toBeGreaterThan(100);
+    await page.getByRole('button', { name: 'Carro', exact: true }).click();
+    await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+    await expect.poll(async () => (await inspect()).fov).toBe(initial.fov);
+    expect((await inspect()).camera).toEqual(initial.camera);
+  }
+  await view.selectOption('front');
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await expect.poll(async () => (await inspect()).fov).toBe(42);
+  expect((await inspect()).camera[2]).toBeLessThan(0);
+  expect((await pixels()).contrastPixels).toBeGreaterThan(800);
+  expect((await pixels()).angle).toBe(engineAngle);
+  await page.getByRole('button', { name: 'Rodar motor', exact: true }).click();
+  await canvas.evaluate(element => element.scrollIntoView({ block: 'center' }));
+  await expect.poll(async () => (await pixels()).angle, { timeout: 30_000 }).toBeGreaterThan(engineAngle);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true);
+  expect(errors).toEqual([]);
+});

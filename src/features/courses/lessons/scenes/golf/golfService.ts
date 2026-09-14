@@ -4,8 +4,20 @@ import { FUSE_CIRCUITS, FUSE_NODES, type ElectricalNode, type FuseCircuit } from
 export type ServiceArea = 'engine' | 'cabin' | 'battery';
 export interface TestPoint { id: string; label: string; node: ElectricalNode; position: Position; area: ServiceArea }
 
+const FUSE_MOUNTS: Record<FuseCircuit, { area: 'engine' | 'cabin'; position: Position }> = {
+  main: { area: 'engine', position: [-48, 13, -35] },
+  ecu: { area: 'engine', position: [-16, 13, -35] },
+  pump: { area: 'engine', position: [16, 13, -35] },
+  ignition: { area: 'engine', position: [48, 13, -35] },
+  lighting: { area: 'engine', position: [-62, 13, 28] },
+  comfort: { area: 'engine', position: [-31, 13, 28] },
+  fan: { area: 'engine', position: [0, 13, 28] },
+  diagnostics: { area: 'cabin', position: [0, 13, -25] },
+  instrument: { area: 'cabin', position: [0, 13, 20] },
+};
+
 export function fuseMount(id: FuseCircuit): { area: 'engine' | 'cabin'; position: Position } {
-  return id === 'diagnostics' ? { area: 'cabin', position: [0, 13, -25] } : { area: 'engine', position: [(FUSE_CIRCUITS.findIndex(circuit => circuit.id === id) - 1.5) * 32, 13, -35] };
+  return FUSE_MOUNTS[id];
 }
 
 export function carrierToWorld(area: 'engine' | 'cabin', point: Position): Position {

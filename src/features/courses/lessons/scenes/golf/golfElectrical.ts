@@ -4,11 +4,16 @@ export const FUSE_CIRCUITS = [
   { id: 'pump', label: 'Bomba de combustivel', location: 'Cofre', color: '#e0b341' },
   { id: 'ignition', label: 'Bobinas', location: 'Cofre', color: '#4f91b9' },
   { id: 'diagnostics', label: 'Tomada OBD2', location: 'Habitaculo', color: '#bc514d' },
+  { id: 'lighting', label: 'Iluminacao externa', location: 'Cofre', color: '#8fa06a' },
+  { id: 'comfort', label: 'Conforto e travas', location: 'Cofre', color: '#7f8fbb' },
+  { id: 'fan', label: 'Ventoinha do radiador', location: 'Cofre', color: '#b5763f' },
+  { id: 'instrument', label: 'Painel de instrumentos', location: 'Habitaculo', color: '#74a096' },
 ] as const;
 
 export type FuseCircuit = typeof FUSE_CIRCUITS[number]['id'];
 
-export type ElectricalNode = 'batteryPlus' | 'ground' | 'distribution' | 'ecuFeed' | 'relay87' | 'relay85' | 'relay86' | 'pumpFeed' | 'ignitionFeed' | 'obdFeed' | 'sensorReference';
+export type ElectricalNode = 'batteryPlus' | 'ground' | 'distribution' | 'ecuFeed' | 'relay87' | 'relay85' | 'relay86' | 'pumpFeed' | 'ignitionFeed' | 'obdFeed' | 'sensorReference'
+  | 'lightingFeed' | 'comfortFeed' | 'fanFeed' | 'instrumentFeed';
 
 export const FUSE_NODES: Record<FuseCircuit, readonly [ElectricalNode, ElectricalNode]> = {
   main: ['batteryPlus', 'distribution'],
@@ -16,22 +21,34 @@ export const FUSE_NODES: Record<FuseCircuit, readonly [ElectricalNode, Electrica
   pump: ['distribution', 'pumpFeed'],
   ignition: ['relay87', 'ignitionFeed'],
   diagnostics: ['distribution', 'obdFeed'],
+  lighting: ['distribution', 'lightingFeed'],
+  comfort: ['distribution', 'comfortFeed'],
+  fan: ['distribution', 'fanFeed'],
+  instrument: ['distribution', 'instrumentFeed'],
 };
 
 const potentialCache = new Map<string, Readonly<Record<ElectricalNode, number | null>>>();
 
-export function electricalPotentials(keyOn: boolean, openFuse: FuseCircuit | null, volts: number): Readonly<Record<ElectricalNode, number | null>> {
-  const cacheKey = `${keyOn}:${openFuse}:${volts}`;
+/** Um fusivel isolado ou uma lista deles; a lista permite desligar varios sistemas ao mesmo tempo. */
+export type OpenFuses = FuseCircuit | null | readonly FuseCircuit[];
+
+export function openFuseList(open: OpenFuses): readonly FuseCircuit[] {
+  return open === null ? [] : typeof open === 'string' ? [open] : open;
+}
+
+export function electricalPotentials(keyOn: boolean, open: OpenFuses, volts: number): Readonly<Record<ElectricalNode, number | null>> {
+  const openFuses = openFuseList(open);
+  const cacheKey = `${keyOn}:${openFuses.join(',')}:${volts}`;
   const cached = potentialCache.get(cacheKey);
   if (cached) return cached;
-  const relayClosed = keyOn && openFuse !== 'main' && openFuse !== 'ecu';
-  const links: (readonly [ElectricalNode, ElectricalNode])[] = FUSE_CIRCUITS.filter(circuit => circuit.id !== openFuse).map(circuit => FUSE_NODES[circuit.id]);
+  const relayClosed = keyOn && !openFuses.includes('main') && !openFuses.includes('ecu');
+  const links: (readonly [ElectricalNode, ElectricalNode])[] = FUSE_CIRCUITS.filter(circuit => !openFuses.includes(circuit.id)).map(circuit => FUSE_NODES[circuit.id]);
   links.push(['ground', 'relay85']);
   if (keyOn) links.push(['ecuFeed', 'relay86']);
   if (relayClosed) links.push(['ecuFeed', 'relay87']);
-  const nodes: ElectricalNode[] = ['batteryPlus', 'ground', 'distribution', 'ecuFeed', 'relay87', 'relay85', 'relay86', 'pumpFeed', 'ignitionFeed', 'obdFeed', 'sensorReference'];
+  const nodes: ElectricalNode[] = ['batteryPlus', 'ground', 'distribution', 'ecuFeed', 'relay87', 'relay85', 'relay86', 'pumpFeed', 'ignitionFeed', 'obdFeed', 'sensorReference', 'lightingFeed', 'comfortFeed', 'fanFeed', 'instrumentFeed'];
   const potentials = {} as Record<ElectricalNode, number | null>;
-  const loads = new Set<ElectricalNode>(['ecuFeed', 'pumpFeed', 'ignitionFeed', 'obdFeed', 'relay86']);
+  const loads = new Set<ElectricalNode>(['ecuFeed', 'pumpFeed', 'ignitionFeed', 'obdFeed', 'relay86', 'lightingFeed', 'comfortFeed', 'fanFeed', 'instrumentFeed']);
   for (const node of nodes) {
     const connected = new Set<ElectricalNode>([node]);
     const pending: ElectricalNode[] = [node];
@@ -59,12 +76,19 @@ export function measureVoltage(potentials: Readonly<Record<ElectricalNode, numbe
   return positive === null || negative === null ? null : positive - negative;
 }
 
-export function electricalSupply(keyOn: boolean, pumpRequested: boolean, openFuse: FuseCircuit | null) {
-  const potentials = electricalPotentials(keyOn, openFuse, 12.6);
+export function electricalSupply(keyOn: boolean, pumpRequested: boolean, open: OpenFuses) {
+  const openFuses = openFuseList(open);
+  const potentials = electricalPotentials(keyOn, openFuses, 12.6);
   const distribution = (potentials.distribution ?? 0) > 0;
   const ecu = (potentials.relay87 ?? 0) > 0;
-  const ignition = ecu && openFuse !== 'ignition';
-  const pump = ecu && pumpRequested && openFuse !== 'pump';
+  const ignition = ecu && !openFuses.includes('ignition');
+  const pump = ecu && pumpRequested && !openFuses.includes('pump');
   const diagnostics = (potentials.obdFeed ?? 0) > 0;
-  return { distribution, ecu, ignition, pump, diagnostics, mainRelay: ecu, sensor5V: ecu ? 5 : 0 };
+  return {
+    distribution, ecu, ignition, pump, diagnostics, mainRelay: ecu, sensor5V: ecu ? 5 : 0,
+    lighting: (potentials.lightingFeed ?? 0) > 0,
+    comfort: (potentials.comfortFeed ?? 0) > 0,
+    fan: (potentials.fanFeed ?? 0) > 0,
+    instrument: (potentials.instrumentFeed ?? 0) > 0,
+  };
 }

@@ -1,6 +1,10 @@
 import { Path, Shape, Vector2 } from 'three';
+import { BODY_TOP } from './golfBodyProfile';
+export { BODY_TOP } from './golfBodyProfile';
 import { GOLF } from './golfPhysics';
 import type { AlignmentAxle, WheelAlignmentMeasurement } from './golfAlignment';
+import { roundedCabinContour, type CabinPoint } from './golfCabinContours';
+import { REAR_BUMPER_SAMPLES, REAR_HATCH_ROWS, rearSideDepth } from './golfRearSurface';
 
 export const BODY_ARCH = { centreHeight: 317, radius: 357, sideOffset: 837 } as const;
 export type VehicleWheelId = `${AlignmentAxle}-${'left' | 'right'}`;
@@ -30,11 +34,11 @@ export function wheelDimension(id: VehicleWheelId) {
   return { wheel, lower, upper, label, heightMm: upper[1] - lower[1] };
 }
 
-export const VEHICLE_WINDOWS = [
-  [[510, 990], [885, 1350], [1510, 1397], [1510, 990]],
-  [[1570, 990], [1570, 1397], [2130, 1390], [2320, 1325], [2290, 990]],
-  [[2350, 990], [2380, 1300], [2600, 1225], [2860, 1030], [2810, 990]],
-] as [number, number][][];
+export const VEHICLE_WINDOWS = ([
+  [[330, 990], [620, 1270], [820, 1370], [1100, 1410], [1500, 1418], [1500, 990]],
+  [[1590, 990], [1590, 1418], [1990, 1410], [2260, 1394], [2230, 990]],
+  [[2265, 990], [2295, 1390], [2450, 1370], [2570, 1290], [2610, 1060], [2580, 990]],
+] as CabinPoint[][]).map(points => roundedCabinContour(points, 45));
 
 export function createVehicleGlazing() {
   return VEHICLE_WINDOWS.map(points => new Shape(points.map(point => new Vector2(...point))));
@@ -42,16 +46,15 @@ export function createVehicleGlazing() {
 
 export function createVehicleOutline() {
   const shape = new Shape();
-  shape.moveTo(-875, 430); shape.quadraticCurveTo(-890, 690, -720, 775);
-  shape.bezierCurveTo(-430, 900, 160, 940, 390, 970);
-  shape.lineTo(840, 1395); shape.quadraticCurveTo(1000, 1490, 2100, 1450);
-  shape.quadraticCurveTo(2700, 1400, 3050, 1090); shape.lineTo(3300, 970);
-  shape.quadraticCurveTo(3360, 900, 3329, 460); shape.lineTo(2970, 300);
+  shape.moveTo(-620, 317); shape.lineTo(-620, 780); shape.lineTo(-875, 795);
+  [...BODY_TOP.hood, ...BODY_TOP.windshield, ...BODY_TOP.roof].forEach(([depth, height]) => shape.lineTo(depth, height));
+  [...BODY_TOP.rearGlass, ...REAR_HATCH_ROWS].forEach(([depth, height]) => shape.lineTo(rearSideDepth(depth, height), height));
+  [...REAR_BUMPER_SAMPLES].reverse().slice(1).forEach(([height, depth]) => shape.lineTo(rearSideDepth(depth, height), height));
   shape.lineTo(2578 + BODY_ARCH.radius, BODY_ARCH.centreHeight);
   shape.absarc(2578, BODY_ARCH.centreHeight, BODY_ARCH.radius, 0, Math.PI, false);
-  shape.lineTo(BODY_ARCH.radius, BODY_ARCH.centreHeight);
+  shape.lineTo(2170, 245); shape.lineTo(410, 245); shape.lineTo(BODY_ARCH.radius, BODY_ARCH.centreHeight);
   shape.absarc(0, BODY_ARCH.centreHeight, BODY_ARCH.radius, 0, Math.PI, false);
-  shape.lineTo(-875, 430); shape.closePath();
+  shape.lineTo(-620, 317); shape.closePath();
   for (const points of VEHICLE_WINDOWS) {
     const opening = new Path(points.map(point => new Vector2(...point)));
     opening.closePath();

@@ -25,8 +25,28 @@ export function Turned({ profile, color = '#adb3b3', opacity = 1, segments = 32 
   </mesh>;
 }
 
-export function Tube({ points, radius, color, opacity = 1 }: { points: Point[]; radius: number; color: string; opacity?: number }) {
-  const curve = useMemo(() => new THREE.CatmullRomCurve3(points.map(point => new THREE.Vector3(...point)), false, 'centripetal'), [points]);
+/**
+ * Arredonda cada vertice com um raio curto antes de suavizar a curva. Sem isso a
+ * CatmullRom transforma um canto de 90 graus num arco enorme e o chicote perde os trechos retos.
+ */
+function filleted(points: Point[], radius: number): THREE.Vector3[] {
+  const nodes = points.map(point => new THREE.Vector3(...point));
+  if (nodes.length < 3) return nodes;
+  const out = [nodes[0]];
+  for (let index = 1; index < nodes.length - 1; index += 1) {
+    const corner = nodes[index];
+    const before = nodes[index - 1].clone().sub(corner);
+    const after = nodes[index + 1].clone().sub(corner);
+    const cut = Math.min(radius, before.length() * 0.45, after.length() * 0.45);
+    if (cut < 0.5) { out.push(corner); continue; }
+    out.push(corner.clone().addScaledVector(before.normalize(), cut), corner.clone().addScaledVector(after.normalize(), cut));
+  }
+  out.push(nodes[nodes.length - 1]);
+  return out;
+}
+
+export function Tube({ points, radius, color, opacity = 1, corner = 26 }: { points: Point[]; radius: number; color: string; opacity?: number; corner?: number }) {
+  const curve = useMemo(() => new THREE.CatmullRomCurve3(filleted(points, corner), false, 'centripetal'), [points, corner]);
   return <mesh>
     <tubeGeometry args={[curve, Math.max(24, points.length * 10), radius, 10, false]} />
     <meshStandardMaterial color={color} roughness={0.5} metalness={0.4} transparent={opacity < 1} opacity={opacity} depthWrite={opacity === 1} />

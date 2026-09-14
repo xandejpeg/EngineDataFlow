@@ -40,11 +40,11 @@ export const GOLF_PARTS: GolfPart[] = [
   { id: 19, name: 'Quatro bobinas', code: 'N70 / N127 / N291 / N292', position: engineToWorld([0, 390, 0]), group: 'Ignicao', description: 'Uma bobina por vela: carga do primario, corte e faisca na ordem 1-3-4-2.' },
   { id: 20, name: 'Fase', code: 'G40', position: engineToWorld([-45, 335, 50]), group: 'Sensores', description: 'Um pulso didatico por ciclo identifica as duas voltas. O pulso acompanha o ajuste do comando de admissao.' },
   { id: 21, name: 'Temperatura do motor', code: 'G62', position: engineToWorld([330, 215, -67]), group: 'Sensores', description: 'Temperatura muda ao longo do aquecimento, nao se repete a cada volta do virabrequim.' },
-  { id: 22, name: 'Sondas de banda larga', code: 'G39 / G108', position: [160, 600, 135], group: 'Escape', description: 'O AXW documentado usa dois ramos de escape, cada um com sonda de banda larga antes do pre-catalisador.' },
-  { id: 23, name: 'Pre-catalisadores', code: 'Dois ramos', position: [150, 460, 170], group: 'Escape', description: 'Dois pre-catalisadores proximos do motor. As tres reacoes simultaneas exigem mistura perto de lambda 1.' },
+  { id: 22, name: 'Sonda de banda larga', code: 'G39', position: [160, 600, 135], group: 'Escape', description: 'Quatro cilindros em linha formam um banco so: uma sonda de banda larga regula a mistura antes do pre-catalisador. Ela tem seis vias porque mede corrente de bombeamento, nao tensao de degrau.' },
+  { id: 23, name: 'Pre-catalisador', code: 'Proximo ao motor', position: [150, 460, 170], group: 'Escape', description: 'Pre-catalisador proximo do motor. As tres reacoes simultaneas exigem mistura perto de lambda 1.' },
   { id: 24, name: 'Temperatura do escape', code: 'G235', position: [-60, 210, 560], group: 'Escape', description: 'Monitora a temperatura antes do acumulador de NOx; a leitura depende da carga e do estado termico.' },
   { id: 25, name: 'Acumulador de NOx', code: 'G295 / J583 a jusante', position: [-80, 180, 900], group: 'Escape', description: 'Armazena NOx na mistura pobre. A regeneracao rica libera capacidade; o sensor fica depois do acumulador.' },
-  { id: 26, name: 'Sondas pos-pre-catalisador', code: 'G130 / G131', position: [150, 350, 230], group: 'Escape', description: 'No AXW ha uma sonda de banda estreita depois de cada pre-catalisador, antes da uniao no acumulador de NOx.' },
+  { id: 26, name: 'Sonda pos-pre-catalisador', code: 'G130', position: [150, 350, 230], group: 'Escape', description: 'Sonda de banda estreita depois do pre-catalisador, antes do acumulador de NOx. Quatro vias: sinal, massa e os dois fios do aquecedor.' },
   { id: 27, name: 'Bateria', code: '12 V / seis celulas', position: [-450, 780, 260], group: 'Controle', description: 'A tensao cai durante a partida e passa ao nivel de carga quando o alternador sustenta o sistema.' },
   { id: 28, name: 'Fusiveis e reles', code: 'Distribuicao didatica / rele principal', position: FUSE_BOX_POSITIONS.engine, group: 'Controle', description: 'Caixas no cofre e no habitaculo. Rele com adaptador de teste 30/87/85/86. Medicao DC entre terminais; fios e contatos ideais, cargas simplificadas. Nao representa pinagem ou amperagens VW. Resistencia, corrente, maus contatos e curvas dos sensores ainda nao modelados. A falha interrompe o motor imediatamente; restaurar retoma o preset.' },
 ];
@@ -77,7 +77,7 @@ export function partReading(id: number, sample: GolfSample, clock: GolfClock, sc
     case 24: return `${(sample.rpm ? clock.catalystTemperature + 80 : clock.catalystTemperature).toFixed(0)} C`;
     case 25: return `${Math.round(clock.nox * 100)}% de ocupacao`;
     case 26: return sample.rpm ? `${Math.round(sample.lsf * 1000)} mV (ilustrativo)` : 'Sem leitura valida';
-    case 28: return clock.openFuse ? 'Circuito interrompido' : sample.electrical.mainRelay ? 'Rele principal fechado' : 'Rele principal aberto';
+    case 28: return clock.openFuse || clock.powerOff.length ? 'Circuito interrompido' : sample.electrical.mainRelay ? 'Rele principal fechado' : 'Rele principal aberto';
     default: return `${sample.volts.toFixed(1)} V`;
   }
 }

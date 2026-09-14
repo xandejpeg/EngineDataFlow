@@ -1,4 +1,4 @@
-import { useRef, type MutableRefObject } from 'react';
+import { useEffect, useMemo, useRef, type MutableRefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Casting, Ring, Shaft, Turned } from './GolfPrimitives';
@@ -7,10 +7,14 @@ import { VEHICLE_WHEELS } from './golfVehicleGeometry';
 import type { GolfClock } from './golfPhysics';
 import { sampleBrakes, type BrakeState } from './golfBrakeHydraulics';
 import { BRAKE_CALIPER_ANGLE } from './golfBrakeRouting';
+import { GolfRimFace } from './GolfRimFace';
+import { createGolfTire } from './golfTireGeometry';
 
 type WheelLocation = typeof VEHICLE_WHEELS[number];
 
 export function GolfWheel({ location, clock, mounted = true, brakes }: { location: WheelLocation; clock: MutableRefObject<GolfClock>; mounted?: boolean; brakes?: MutableRefObject<BrakeState> }) {
+  const tire = useMemo(createGolfTire, []);
+  useEffect(() => () => tire.dispose(), [tire]);
   const rolling = useRef<THREE.Group>(null);
   const pads = useRef<(THREE.Group | null)[]>([]);
   const piston = useRef<THREE.Group>(null);
@@ -28,19 +32,14 @@ export function GolfWheel({ location, clock, mounted = true, brakes }: { locatio
     <group rotation={[0, location.side < 0 ? Math.PI : 0, 0]}>
       <group ref={rolling} name={`golf-wheel-rotating-${location.id}`}>
         <group name={`golf-wheel-mounted-${location.id}`} visible={mounted}>
-          <mesh rotation={[0, Math.PI / 2, 0]} scale={[1, 1, 1.3]}><torusGeometry args={[232, 85, 16, 48]} /><meshStandardMaterial color="#24282a" roughness={0.95} /></mesh>
+          <mesh name={`golf-tire-${location.id}`} geometry={tire} dispose={null}><meshStandardMaterial color="#202223" roughness={0.95} /></mesh>
           <group rotation={[0, 0, -Math.PI / 2]}>
             <Turned profile={[[205, -80], [214, -80], [214, -65], [209, -65], [209, 65], [214, 65], [214, 80], [205, 80], [205, -80]]} color="#a8b7b8" />
           </group>
           {[-80, 80].map(axis => <Ring key={axis} position={[axis, 0, 0]} radius={214} tube={5} rotation={[0, Math.PI / 2, 0]} color="#cbd2d1" />)}
-          {Array.from({ length: 5 }, (_, spoke) => <group key={spoke} rotation={[spoke * Math.PI * 2 / 5, 0, 0]}>
-            <Casting position={[65, 121, 0]} size={[20, 170, 35]} radius={7} color="#b3bcbe" />
-            <Shaft from={[76, 55, 0]} to={[86, 55, 0]} radius={8} color="#c8d0cc" />
-          </group>)}
-          <Shaft from={[35, 0, 0]} to={[75, 0, 0]} radius={48} color="#9daeb2" />
-          <Shaft from={[75, 0, 0]} to={[82, 0, 0]} radius={27} color="#3a515c" />
+          <GolfRimFace id={location.id} />
           <Shaft from={[82, 192, 22]} to={[103, 192, 22]} radius={4} color="#253d46" />
-          {[-95, 95].map(axis => <Ring key={axis} position={[axis, 0, 0]} radius={245} tube={1.5} rotation={[0, Math.PI / 2, 0]} color="#343b3d" />)}
+          {[-109, 109].map(axis => <Ring key={axis} position={[axis, 0, 0]} radius={260} tube={1} rotation={[0, Math.PI / 2, 0]} color="#303334" />)}
         </group>
         <group name={`golf-brake-rotor-${location.id}`} rotation={[0, 0, -Math.PI / 2]} userData={{ ...BRAKE_REFERENCE, ventilated: model.ventilated }}>
           {model.ventilated ? <>

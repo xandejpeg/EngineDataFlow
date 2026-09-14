@@ -4,6 +4,9 @@ interface BrakeInspection {
   id: string;
   exists: boolean;
   mounted: boolean;
+  rimParent: string;
+  rim: number[];
+  spokeCount: number;
   position: number[];
   rotor: number[];
   fixed: number[];
@@ -26,6 +29,10 @@ test('Freios: rodas removiveis rotores moveis e pincas fixas', async ({ page }, 
   await expect.poll(async () => (await inspect()).filter(brake => brake.exists).length, { timeout: 30_000 }).toBe(4);
   const initial = await inspect();
   expect(initial.every(brake => brake.mounted && brake.status === 'estimated')).toBe(true);
+  for (const wheel of initial) {
+    expect(wheel.spokeCount).toBe(10);
+    expect(wheel.rimParent).toBe(`golf-wheel-mounted-${wheel.id}`);
+  }
   await page.getByRole('checkbox', { name: 'Pneus e aros', exact: true }).uncheck();
   await expect.poll(async () => (await inspect()).every(brake => !brake.mounted)).toBe(true);
   expect((await inspect()).map(brake => brake.position)).toEqual(initial.map(brake => brake.position));
@@ -34,6 +41,7 @@ test('Freios: rodas removiveis rotores moveis e pincas fixas', async ({ page }, 
   await lab.screenshot({ path: testInfo.outputPath('brakes-uncovered.png') });
   await page.getByRole('combobox', { name: 'Estado de operacao', exact: true }).selectOption('cruise');
   await expect.poll(async () => (await inspect()).every((brake, index) => JSON.stringify(brake.rotor) !== JSON.stringify(initial[index].rotor))).toBe(true);
+  await expect.poll(async () => (await inspect()).every((brake, index) => JSON.stringify(brake.rim) !== JSON.stringify(initial[index].rim))).toBe(true);
   expect((await inspect()).map(brake => brake.fixed)).toEqual(initial.map(brake => brake.fixed));
   const bounds = (await canvas.boundingBox())!;
   await page.mouse.move(bounds.x + bounds.width * 0.5, bounds.y + bounds.height * 0.5);

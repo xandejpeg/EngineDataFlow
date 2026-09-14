@@ -5,7 +5,7 @@ import { GOLF, sampleGolf, type GolfClock, type InjectionMode } from './golfPhys
 import { GolfCylinder } from './GolfCylinder';
 import { GolfThrottleBody } from './GolfEgasParts';
 import { Casting, Connector, Ring, Shaft, Tube, Turned } from './GolfPrimitives';
-import { ENGINE_CONNECTORS, INJECTOR_FUEL_PORT, RAIL_SENSOR_MOUNT, HIGH_PUMP_INLET } from './golfMounts';
+import { INJECTOR_FUEL_PORT, RAIL_SENSOR_MOUNT, HIGH_PUMP_INLET } from './golfMounts';
 
 const AXES = [0, 88, 176, 264];
 const INTAKE_PATHS = AXES.map(axis => [[axis, 245, 51], [axis, 284, 93], [axis, 258, 157], [axis, 204, 185], [axis, 194, 142]] as [number, number, number][]);
@@ -123,10 +123,6 @@ function Intake({ clock, mode }: { clock: MutableRefObject<GolfClock>; mode?: In
     <group position={[-45, 335, 50]} userData={{ golfPart: 20 }}><Casting size={[30, 25, 25]} color="#303a3e" /><Connector /></group>
     <group position={[310, -57, 63]} userData={{ golfPart: 17 }}><Casting size={[30, 22, 27]} color="#303a3e" /><Connector /></group>
     {[44, 220].map(axis => <group key={axis} position={[axis, 70, 58]} rotation={[Math.PI / 2, 0, 0]} userData={{ golfPart: 16 }}><Ring radius={12} tube={5} /><Connector pins={2} /></group>)}
-    <Tube points={[[-85, 420, 60], [132, 420, 60], [300, 420, 60]]} radius={8} color="#354346" />
-    {ENGINE_CONNECTORS.map(connector => <group key={connector.name} name={`golf-connector-${connector.name}`}>
-      <Tube points={[connector.point, [connector.point[0], connector.point[1] + 22, connector.point[2] + 32], [connector.point[0], 420, 160], [connector.point[0], 420, 60]]} radius={2.5} color="#354346" />
-    </group>)}
   </group>;
 }
 

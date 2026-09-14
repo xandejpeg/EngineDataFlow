@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 interface AuxiliaryInspection {
   temperature: number;
   fanAngle: number;
+  fanPowered: boolean;
   objects: { name: string; exists: boolean; status: string; projected: number[][] }[];
 }
 
@@ -31,8 +32,8 @@ test('Cofre: arrefecimento climatizacao suportes e lavador', async ({ page }, te
   await lab.screenshot({ path: testInfo.outputPath('auxiliaries-cutaway.png') });
   const current = await inspect();
   expect(Number.isFinite(current.fanAngle)).toBe(true);
-  if (current.temperature > 85) await expect.poll(async () => (await inspect()).fanAngle).toBeGreaterThan(current.fanAngle);
-  else expect(current.fanAngle).toBe(0);
+  if (current.fanPowered) await expect.poll(async () => (await inspect()).fanAngle).toBeGreaterThan(current.fanAngle);
+  else await expect.poll(async () => { const next = await inspect(); return next.fanPowered || next.fanAngle === current.fanAngle; }).toBe(true);
   const bounds = (await canvas.boundingBox())!;
   await page.mouse.move(bounds.x + bounds.width * 0.5, bounds.y + bounds.height * 0.5);
   await page.mouse.down();

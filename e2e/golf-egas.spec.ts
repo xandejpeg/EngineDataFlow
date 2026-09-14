@@ -27,6 +27,10 @@ test('EGAS: pedal ECU TBI sinais falhas e retorno a montagem', async ({ page }, 
   expect(initial.plugs.every(plug => plug.position.length === 3)).toBe(true);
   for (const coordinate of initial.projected.flat()) expect(Math.abs(coordinate)).toBeLessThan(1);
   expect(await pixels()).toBeGreaterThan(100);
+  expect(await lab.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    return Array.from(element.querySelectorAll('.golf-toolbar, .golf-workspace, .golf-transport')).every(row => row.getBoundingClientRect().right <= bounds.right + 1 && row.getBoundingClientRect().left >= bounds.left - 1);
+  })).toBe(true);
   await lab.screenshot({ path: testInfo.outputPath('egas-circuit.png') });
 
   await page.getByRole('combobox', { name: 'Vista do acelerador' }).selectOption('pedal');
@@ -48,6 +52,12 @@ test('EGAS: pedal ECU TBI sinais falhas e retorno a montagem', async ({ page }, 
   await page.getByRole('combobox', { name: 'Vista do acelerador' }).selectOption('throttle');
   await expect.poll(async () => (await inspect()).projected.every(point => point.every(coordinate => Math.abs(coordinate) < 1))).toBe(true);
   const pedal = page.getByRole('slider', { name: 'Pedal do acelerador', exact: true });
+  await pedal.scrollIntoViewIfNeeded();
+  expect(await pedal.evaluate(element => {
+    const bounds = element.getBoundingClientRect();
+    return document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2) === element;
+  })).toBe(true);
+  await page.locator('.golf-inspector').screenshot({ path: testInfo.outputPath('egas-controls.png') });
   await pedal.focus(); await pedal.press('End');
   await expect.poll(async () => (await inspect()).opening).toBeGreaterThan(0.93);
   expect(await pixels()).toBeGreaterThan(100);
